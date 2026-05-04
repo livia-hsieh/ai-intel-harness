@@ -25,7 +25,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator
 
 EXCERPT_CHAR_CAP = 500
 COLD_START_LOOKBACK_DAYS = 30
@@ -90,6 +90,14 @@ MIGRATIONS = [
     ("items", "scaffolding_note", "TEXT"),
     ("fetch_log", "used_channel", "TEXT"),
     ("fetch_log", "tried_endpoints", "TEXT"),
+    # v0.3 — triage (Task #4): Haiku decides per-item Pillar + signal density.
+    # Null until triaged. signal score is 0..1; pillars is JSON array of ints
+    # (an item can map to multiple Pillars, e.g. 1+2 = banking AI strategy).
+    ("items", "triage_pillars", "TEXT"),
+    ("items", "triage_signal", "REAL"),
+    ("items", "triage_reason", "TEXT"),
+    ("items", "triage_at", "TEXT"),
+    ("items", "triage_model", "TEXT"),
 ]
 
 
@@ -279,10 +287,53 @@ class Storage:
                 (source_id, new_pub, _utc_now(), cold_started_at),
             )
 
+    # --- triage (Task #4: Haiku per-item decisions) ---
+
+    def list_untriaged_items(self, limit: int | None = None) -> list[dict[str, Any]]:
+        """Items the triage layer has not yet processed.
+
+        Returned as plain dicts (not the Item dataclass) because the triage
+        prompt only needs id/source_id/title/excerpt/published_at/pillar_tags.
+        """
+        sql = """
+            SELECT id, source_id, url, title, excerpt, published_at, pillar_tags
+              FROM items
+             WHERE triage_at IS NULL
+             ORDER BY id ASC
+        """
+        if limit:
+            sql += f" LIMIT {int(limit)}"
+        with self._conn() as conn:
+            cols = ("id", "source_id", "url", "title", "excerpt", "published_at", "pillar_tags")
+            return [dict(zip(cols, row)) for row in conn.execute(sql)]
+
+    def record_triage(
+        self,
+        item_id: int,
+        *,
+        pillars: list[int],
+        signal: float,
+        reason: str,
+        model: str,
+    ) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                """
+                UPDATE items
+                   SET triage_pillars = ?, triage_signal = ?, triage_reason = ?,
+                       triage_at = ?, triage_model = ?
+                 WHERE id = ?
+                """,
+                (json.dumps(pillars), signal, reason, _utc_now(), model, item_id),
+            )
+
     def stats(self) -> dict[str, int]:
         with self._conn() as conn:
             return {
                 "items_total": conn.execute("SELECT COUNT(*) FROM items").fetchone()[0],
+                "items_triaged": conn.execute(
+                    "SELECT COUNT(*) FROM items WHERE triage_at IS NOT NULL"
+                ).fetchone()[0],
                 "fetch_runs": conn.execute("SELECT COUNT(*) FROM fetch_log").fetchone()[0],
                 "hitl_pending": conn.execute("SELECT COUNT(*) FROM hitl_queue").fetchone()[0],
                 "sources_with_cursor": conn.execute("SELECT COUNT(*) FROM source_cursor").fetchone()[0],

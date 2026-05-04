@@ -37,10 +37,10 @@ Each scaffolding choice (a hardcoded rule, a strict filter, a forced format) enc
 ## Layout
 
 ```
-collector/        # Task #3 — wide scan + dedup
-synthesizer/      # Task #4 — Haiku triage + Sonnet/Opus synthesis (not yet built)
+collector/        # Task #3 — wide scan + dedup (DONE)
+synthesizer/      # Task #4 — Haiku triage (DONE), Sonnet Pulse + Opus Foundation (TODO)
 delivery/         # Task #5 — write to digests/, email notification (not yet built)
-data/             # SQLite dedup DB (committed once stable)
+data/             # SQLite dedup DB + cost_log.jsonl (gitignored until schema stabilizes)
 digests/          # Weekly outputs, YYYY-WNN.md format
 ```
 
@@ -48,9 +48,22 @@ digests/          # Weekly outputs, YYYY-WNN.md format
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -e .[dev]
-collect            # run the wide scan
+pip install -e ".[dev]"
+
+collect                          # Layer 1: wide scan over sources.yaml
+collect --dry-run                # plan only, no fetching
+
+# Layer 2 (Haiku triage) — needs an API key for live runs
+export ANTHROPIC_API_KEY=sk-ant-...
+triage --limit 20                # triage first 20 un-triaged items
+triage --dry-run --limit 100     # cost forecast, no API calls
+
+# Or skip the env var and just see the prompt cost forecast:
+triage --dry-run
 ```
+
+`data/cost_log.jsonl` accumulates per-call cost so the SCOPE.md §9 budget
+alarm (>$5/week) has actual numbers to query.
 
 ## License
 

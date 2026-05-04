@@ -29,6 +29,7 @@ htmlcov/
 data/dedup.sqlite
 data/dedup.sqlite-*
 data/*.log
+data/*.jsonl
 data/cache/
 
 # Claude Code local settings

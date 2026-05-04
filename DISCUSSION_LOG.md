@@ -78,8 +78,44 @@ Livia 的 AI 知識庫是 Karpathy LLM Wiki 模式 Obsidian vault，三層分明
 
 ---
 
+## Session 2 — 2026-05-04（同日續）
+
+### 進度推進
+
+- 與 Livia 對齊 5 階段路徑（產品先 → 客群 → 賣法），選 Path A
+- 完成 Q1（策略藍圖內涵）+ Q2（CoE 設計）兩個反問
+- Livia 給 5 個結構性修正（藍圖、#1 vs #6、Ontology 融入 #3、#4 是傘含 ops/治理工具、#5 是平行可拆三子分類）
+- 確認 AI Governance = AI at Scale 之 1，但很獨立可拆
+- 提出 7 元件 × 顧問案 × 建置案 大表 v0.1
+- Livia 要求自我挑刺 → 完成 14 條，呈現 7 條 critical + 7 條 backlog
+- **v0.1 已落檔** → `SOLUTION_MAP.md`（之前漏落檔被 Livia 點出）
+
+### Livia 給的關鍵指示
+
+1. 藍圖 = 完整施工圖，「現在 AI at scale 框架有什麼，藍圖上就該出現什麼」
+2. 組織人才 track 還有更多沒探討（含 CoE 設計責任，但不只 CoE）
+3. 大表要先自我挑刺
+
+### Open questions 給 Livia（待回）
+
+見 `SOLUTION_MAP.md` 末尾「Open questions」區。
+
+### Session 2 末尾額外修正
+
+- Livia 點出 v0.1 表格用頓號破壞順序、不易閱讀 → v0.2 改分節編號清單格式
+- 已知工作交付物落檔不能只放 chat，已存 feedback memory
+
+### 下次 session 開頭該讀
+
+1. 本檔（DISCUSSION_LOG.md）
+2. SOLUTION_MAP.md（解決方案大表 v0.2）
+3. AI 知識庫 CLAUDE.md（如要寫 wiki）
+
+---
+
 ## 跨 session 約定
 
 - 本日誌每次討論結束更新一次「Session N」段落
+- **任何工作交付物（表格、清單、設計）一定要落成檔案在 project folder**，不只放在 chat 裡（Livia 點出過一次）
 - wiki 沉澱（perspectives 頁）只在共識成形後寫，不要邊辯論邊寫 wiki
 - 寫 wiki 前再次確認用戶對核心主張的同意度（Livia 在 CLAUDE.md 強調：不要把使用者經驗寫成業界通則）

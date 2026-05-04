@@ -10,6 +10,7 @@
 - [x] 2026-05-04 [v1 coverage scope] HITL kinds 哪些寫 adapter — resolved: 等 4 週數據,但**現在就埋 metrics**(`collected_count`, `haiku_pass_rate`, `digest_inclusion_rate`, `livia_engagement_score`,signal_yield = digest_inclusion × engagement)。決策規則:>0.5 寫 adapter,0.2~0.5 觀察,<0.2 降權,0 移除。預測:substack/github/huggingface 是 config 問題(都有 RSS),paywall/interview_aggregation 永遠 HITL by design,youtube 短期 HITL 撐住,twitter(14 個 influencer)是 4 週後唯一真正要評估的 adapter 投資對象。
 - [x] 2026-05-04 [broken feeds] Anthropic / DeepMind RSS — resolved: 不降權(這兩個是 backbone source,transport 問題不該懲罰 content 價值)。先試替代 endpoint(Anthropic: `/news/rss.xml`, `/index.xml`, `/feed`, sitemap;DeepMind: `/api/v1/feed/blog`, 舊 deepmind.com domain, sitemap)。若全死,寫 HTML scrape fallback **加 `scaffolding_note` metadata** 標明「RSS 恢復就拆」+ meta-loop 每季 probe RSS endpoints。這個 scaffolding 管理 pattern 是 portfolio 設計筆記金礦。
 - [x] 2026-05-04 [over-fetch] OpenAI 929 篇 — resolved: **不採用 Livia 提案,date filter 放 collector 層而非 triage**。理由:(1) Date 是 metadata 不是 content,單一職責;(2) Triage 929 篇 Haiku ~$0.19 純浪費;(3) Triage prompt 不該被 date 邏輯污染。架構:Collector 對每個 source 維護 `SourceCursor(last_successful_pub_date)`,cold start 抓 30 天,steady state 增量。「Wide scan」是 source 廣度不是時間廣度——這個觀念釐清值得寫進 SCOPE.md changelog。Backfill 若需要做獨立 one-shot script,不混進 weekly run。
+- [ ] 2026-05-04 [triage prompt versioning] 要不要在 items 加 `triage_prompt_version` 欄位,當 Pillar 定義改變時可以 diff 新舊決策?加一欄、0 runtime cost。現在加 vs 第一次真的需要 diff 才加?
 
 ---
 
@@ -99,7 +100,7 @@ A bi-weekly automated digest of frontier AI / agent engineering / software engin
 | 1 | Define scope of pipeline | completed | SCOPE.md v0.2 |
 | 2 | Build source registry + channel fallbacks | completed | sources.yaml v0.1 (185 sources) |
 | 3 | Implement collector + dedup (harness principles) | completed | Sessions 4–5. RSS + scrape + HITL + SQLite dedup + cursor incremental + RSS alt-endpoint + scaffolding_note + MVP routing per SCOPE v0.3.1. |
-| 4 | Implement synthesizer (LLM clustering + vocab surfacing) | pending | Next session |
+| 4 | Implement synthesizer (LLM clustering + vocab surfacing) | in_progress | Session 6: triage layer (Haiku) shipped + dry-run-tested. Pulse + Foundation TBD. |
 | 5 | Implement delivery + first end-to-end run | pending | |
 | 6 | Build meta-loop (self-correcting sources + prompt) | pending | The most harness-flavored phase |
 | 7 | GitHub portfolio packaging + self-promotion artifacts | pending | |
@@ -109,6 +110,39 @@ Status values: `pending` / `in_progress` / `completed` / `blocked`.
 ---
 
 ## Session log
+
+### Session 6 — 2026-05-04 — Synthesizer triage layer (Task #4, part 1/3)
+
+**What we did:**
+- Stood up `synthesizer/` module with Haiku 4.5 triage as the first concrete piece. Pulse (Sonnet) and Foundation (Opus) deferred to next sessions — ship one stage end-to-end before adding the next.
+- **`synthesizer/client.py`** — Anthropic SDK wrapper centralising three concerns: API-key handling (refuses to call without `ANTHROPIC_API_KEY`, surfaces `NoAPIKeyError` early), prompt caching (system prompt auto-tagged `cache_control: ephemeral`, ~70% cost cut on Sonnet/Opus runs), and per-call cost accounting to `data/cost_log.jsonl`. Lazy SDK import means `--dry-run` works with no `anthropic` package installed.
+- **`synthesizer/prompts.py`** — `TRIAGE_SYSTEM` carries the full 5-Pillar contract (~3KB / 750 tokens), making it the right size to cache. Per-item user message stays small (~200 tokens) so per-call fresh input cost is minimal.
+- **`synthesizer/triage.py`** — runner that pulls un-triaged items from DB, calls Haiku per item, parses tolerant JSON output, writes decisions back via `Storage.record_triage`. Three-bucket bookkeeping (high ≥0.6 / watch 0.3–0.6 / skip <0.3) matches SCOPE.md §10 calibration.
+- **Storage migration** — added `items.triage_pillars`, `items.triage_signal`, `items.triage_reason`, `items.triage_at`, `items.triage_model`. Idempotent migration via existing `MIGRATIONS` list — DB seamlessly upgraded from v0.2 → v0.3 schema.
+- **CLI** — `triage --dry-run --limit N` for cost forecast without API calls; `triage --limit N` for live runs. Cost summary printed at the end (total USD + cents/item).
+
+**Smoke test (dry-run, 10 items):**
+- 10 items processed, 0 errors
+- Forecast: $0.02 USD (uncached estimate; real cached cost ~30% lower)
+- Per-item: 0.20 cents — at 1028 items in DB → ~$2 uncached / ~$1.30 cached for full DB
+- `data/cost_log.jsonl` written (10 records)
+
+**Tasks completed this session:**
+- ✅ Task #4 part 1/3: Triage layer (Haiku) shipped + dry-run-tested
+
+**Next up (Task #4 parts 2/3, 3/3):**
+- Pulse synthesis (Sonnet) — per-Pillar weekly briefing from triaged items
+- Foundation deep-read (Opus) — rotating curriculum (B→C→D→E→F→G)
+
+**Anti-patterns NOT introduced:**
+8. ❌ No batch API (Anthropic Batch API) — premature; weekly volume too low to justify the async machinery, and per-item triage gives clean error isolation. Will revisit when weekly run >2000 items.
+9. ❌ No retry-with-backoff on transient API errors — orchestrator pattern from collector applies here too: log + skip, don't pretend transient failures are normal.
+10. ❌ No "fallback to Sonnet if Haiku output unparseable" — adds cost for ambiguous benefit. Tolerant JSON regex catches Haiku's occasional code-fence wrapping; bigger failures should surface as errors.
+
+**Cowork question (open, not blocking):**
+- Triage system prompt embeds Pillar definitions inline. When a Pillar definition changes (e.g., Pillar 1 expands to include insurers), the cache invalidates and the next ~12 hours of items get re-triaged with the new prompt. Acceptable, but want to flag: do we want a `triage_prompt_version` column on items so we can compare decisions across prompt revisions? Adds 1 column, 0 runtime cost. Defer or build now?
+
+---
 
 ### Session 5 — 2026-05-04 — Collector retrofit per SCOPE v0.3.1 (Task #3 v0.2)
 
