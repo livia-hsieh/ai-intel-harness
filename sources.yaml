@@ -1,0 +1,1781 @@
+# sources.yaml — Bi-weekly AI Intel Pipeline
+# Version: 0.1 (2026-05-03)
+# Architecture: Wide Scan + Cheap Filter + Selective Deep Read (NO T1/T2/T3 tiers)
+# See SCOPE.md for full design rationale.
+#
+# IMPORTANT:
+# - Source priority is SIGNAL-DRIVEN per cycle (Haiku filters), not source-static
+# - Some entries have URL skeletons; Layer 1 collector resolves at runtime
+# - Mechanism A3 will auto-discover sources cited but not listed
+# - Health metrics defaults by source_type (see SCOPE.md §10)
+
+meta:
+  version: 0.1
+  created: 2026-05-03
+  total_count_target: ~150
+  architecture: wide_scan_cheap_filter_selective_deep
+  schema_version: 0.1
+
+geographic_distribution_targets:
+  pillar_1:
+    taiwan: 0.35
+    us: 0.35
+    europe: 0.20
+    asia_other: 0.10
+  enforced_via: synthesizer_ranking_constraint
+
+source_type_health_defaults:
+  frontier_lab_blog:
+    cadence_trigger: gap_weeks > 8
+    signal_floor: not_applied
+  personal_blog:
+    cadence_trigger: current_gap > p90_historical_gap * 1.5
+    signal_floor: rolling_8_items < historical_mean * 0.7
+  individual_influencer_multiplatform:
+    cadence_trigger: aggregate_gap > 4 weeks
+    signal_floor: cross_platform_signal_avg < historical_mean * 0.7
+  podcast:
+    cadence_trigger: missed_2x_expected_interval
+    signal_floor: livia_skip_rate > 0.5
+  newsletter:
+    cadence_trigger: missed_2_consecutive
+    signal_floor: livia_skip_rate > 0.5
+  regulatory:
+    cadence_trigger: not_applied
+    relevance_drift: 3_consecutive_non_ai_items
+  paywall:
+    human_skip_trigger: 3_consecutive_skips_or_timeouts
+  conference:
+    cadence_trigger: not_applied
+    auto_reactivate: annual_schedule
+  research_paper_feed:
+    cadence_trigger: not_applied
+    filter_drift: post_filter_retention < 0.05 for 4_weeks
+  vendor_blog:
+    cadence_trigger: gap_weeks > 4
+    signal_floor: marketing_tone > 0.6 for 3_weeks
+  enterprise_engineering_blog:
+    cadence_trigger: gap_weeks > 6
+    signal_floor: not_applied
+
+# =============================================================================
+# SOURCES
+# =============================================================================
+
+sources:
+
+  # ===========================================================================
+  # 🤖 FRONTIER LAB — Organizations
+  # ===========================================================================
+
+  - id: anthropic-research
+    name: Anthropic Research
+    pillar_tags: [3, 4]
+    type: frontier_lab_blog
+    primary: { kind: rss, url: https://www.anthropic.com/research }
+    fallback: [{ kind: twitter, handle: AnthropicAI }]
+    geo: us
+    signal_density: very_high
+
+  - id: anthropic-engineering
+    name: Anthropic Engineering Blog
+    pillar_tags: [4]
+    type: frontier_lab_blog
+    primary: { kind: rss, url: https://www.anthropic.com/engineering }
+    fallback: [{ kind: scrape, url: https://www.anthropic.com/engineering }]
+    geo: us
+    signal_density: very_high
+
+  - id: anthropic-applied-ai
+    name: Anthropic Applied AI / Customer Stories
+    pillar_tags: [1, 2, 4]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.anthropic.com/customers }
+    geo: us
+    signal_density: high
+    notes: Banking + manufacturing case studies, has production details
+
+  - id: openai-blog
+    name: OpenAI Blog + Cookbooks
+    pillar_tags: [3, 4]
+    type: frontier_lab_blog
+    primary: { kind: rss, url: https://openai.com/blog/rss.xml }
+    fallback: [{ kind: github, repo: openai/openai-cookbook }]
+    geo: us
+    signal_density: very_high
+
+  - id: google-deepmind
+    name: Google DeepMind Blog
+    pillar_tags: [3]
+    type: frontier_lab_blog
+    primary: { kind: rss, url: https://deepmind.google/discover/blog/rss.xml }
+    geo: us
+    signal_density: high
+
+  - id: microsoft-research-ai
+    name: Microsoft Research AI
+    pillar_tags: [3, 4]
+    type: frontier_lab_blog
+    primary: { kind: rss, url: https://www.microsoft.com/en-us/research/feed/ }
+    geo: us
+    signal_density: high
+
+  - id: meta-ai
+    name: Meta AI Research
+    pillar_tags: [3]
+    type: frontier_lab_blog
+    primary: { kind: rss, url: https://ai.meta.com/blog/rss/ }
+    geo: us
+    signal_density: high
+    notes: LLAMA releases, FAIR research
+
+  - id: mistral
+    name: Mistral AI Blog
+    pillar_tags: [3]
+    type: frontier_lab_blog
+    primary: { kind: scrape, url: https://mistral.ai/news/ }
+    geo: europe
+    signal_density: medium
+
+  - id: xai
+    name: xAI Blog
+    pillar_tags: [3]
+    type: frontier_lab_blog
+    primary: { kind: scrape, url: https://x.ai/news }
+    geo: us
+    signal_density: medium
+
+  - id: cohere
+    name: Cohere Research
+    pillar_tags: [3, 4]
+    type: frontier_lab_blog
+    primary: { kind: rss, url: https://cohere.com/blog/rss.xml }
+    geo: us
+    signal_density: medium
+
+  - id: ai2-allen
+    name: Allen Institute for AI (AI2)
+    pillar_tags: [3]
+    type: frontier_lab_blog
+    primary: { kind: rss, url: https://allenai.org/blog }
+    geo: us
+    signal_density: medium
+
+  - id: apollo-research
+    name: Apollo Research
+    pillar_tags: [3]
+    type: frontier_lab_blog
+    primary: { kind: scrape, url: https://www.apolloresearch.ai/research }
+    geo: europe
+    signal_density: high
+    notes: Safety / deception eval research
+
+  - id: metr
+    name: METR (Model Evaluation and Threat Research)
+    pillar_tags: [3, 4]
+    type: frontier_lab_blog
+    primary: { kind: scrape, url: https://metr.org }
+    geo: us
+    signal_density: very_high
+    notes: Capability eval gold standard, harness eng career relevant
+
+  - id: nvidia-research
+    name: NVIDIA Research
+    pillar_tags: [1, 3]
+    type: frontier_lab_blog
+    primary: { kind: rss, url: https://blogs.nvidia.com/feed/ }
+    fallback: [{ kind: scrape, url: https://research.nvidia.com }]
+    geo: us
+    signal_density: very_high
+    notes: NeMo / NIMs / Omniverse / Isaac / Modulus / Drive
+
+  - id: thinking-machines-lab
+    name: Thinking Machines Lab (Mira Murati)
+    pillar_tags: [3]
+    type: frontier_lab_blog
+    primary: { kind: scrape, url: https://thinkingmachines.ai }
+    geo: us
+    signal_density: very_high
+    notes: Lilian Weng now there
+
+  - id: deepseek
+    name: DeepSeek
+    pillar_tags: [3]
+    type: frontier_lab_blog
+    primary: { kind: github, repo: deepseek-ai }
+    fallback: [{ kind: huggingface, org: deepseek-ai }]
+    geo: china
+    signal_density: very_high
+
+  - id: qwen
+    name: Qwen (Alibaba)
+    pillar_tags: [3]
+    type: frontier_lab_blog
+    primary: { kind: huggingface, org: Qwen }
+    geo: china
+    signal_density: high
+
+  # ===========================================================================
+  # 🌟 FRONTIER LAB — Founders / CEOs as individual influencers
+  # ===========================================================================
+
+  - id: jensen-huang
+    name: Jensen Huang (NVIDIA)
+    pillar_tags: [1, 2, 3]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: youtube, channel: NVIDIA, filter: jensen_keynote }
+      - { kind: earnings_call, ticker: NVDA }
+    geo: us
+    signal_density: very_high
+    notes: GTC keynotes + earnings calls = C-Level economic narrative gold
+
+  - id: sam-altman
+    name: Sam Altman (OpenAI)
+    pillar_tags: [2, 3]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: blog, url: https://blog.samaltman.com }
+      - { kind: twitter, handle: sama }
+    geo: us
+    signal_density: high
+
+  - id: dario-amodei
+    name: Dario Amodei (Anthropic)
+    pillar_tags: [2, 3]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: scrape, url: https://www.darioamodei.com }
+      - { kind: interview_aggregation, source: youtube }
+    geo: us
+    signal_density: high
+
+  - id: demis-hassabis
+    name: Demis Hassabis (Google DeepMind)
+    pillar_tags: [3]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: twitter, handle: demishassabis }]
+    geo: us
+    signal_density: medium
+
+  - id: mustafa-suleyman
+    name: Mustafa Suleyman (Microsoft AI)
+    pillar_tags: [2, 3]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: twitter, handle: mustafasuleyman }]
+    geo: us
+    signal_density: medium
+
+  - id: mira-murati
+    name: Mira Murati (Thinking Machines Lab)
+    pillar_tags: [3]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: twitter, handle: miramurati }]
+    geo: us
+    signal_density: high
+
+  - id: arthur-mensch
+    name: Arthur Mensch (Mistral)
+    pillar_tags: [3]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: twitter, handle: arthurmensch }]
+    geo: europe
+    signal_density: medium
+
+  - id: liang-wenfeng
+    name: Liang Wenfeng 梁文鋒 (DeepSeek)
+    pillar_tags: [3]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: interview_aggregation, source: chinese_tech_media }]
+    geo: china
+    signal_density: high
+    human_required: true
+    notes: Mostly Chinese-language interviews, may need HITL
+
+  # ===========================================================================
+  # 🌟 TOP RESEARCHERS — Individual influencers
+  # ===========================================================================
+
+  - id: andrej-karpathy
+    name: Andrej Karpathy 卡帕西
+    pillar_tags: [3, 4]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: youtube, channel: AndrejKarpathy }
+      - { kind: twitter, handle: karpathy }
+      - { kind: github, user: karpathy }
+      - { kind: blog, url: https://karpathy.ai }
+    geo: us
+    signal_density: very_high
+    notes: nanoGPT, llm.c, education content - Pillar 4 學科教材主源
+
+  - id: yann-lecun
+    name: Yann LeCun (Meta)
+    pillar_tags: [3]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: twitter, handle: ylecun }
+      - { kind: facebook, user: yann.lecun }
+    geo: us
+    signal_density: high
+
+  - id: geoffrey-hinton
+    name: Geoffrey Hinton
+    pillar_tags: [2, 3]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: interview_aggregation, source: youtube }]
+    geo: us
+    signal_density: medium
+    notes: AI safety / public discourse angle
+
+  - id: andrew-ng
+    name: Andrew Ng 吳恩達 (DeepLearning.AI)
+    pillar_tags: [4, 5]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: rss, url: https://www.deeplearning.ai/the-batch/feed/ }
+      - { kind: twitter, handle: AndrewYNg }
+    geo: us
+    signal_density: high
+    notes: The Batch newsletter is also globally popular
+
+  - id: fei-fei-li
+    name: Fei-Fei Li 李飛飛 (Stanford HAI / World Labs)
+    pillar_tags: [2, 3]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: twitter, handle: drfeifei }]
+    geo: us
+    signal_density: medium
+
+  - id: lilian-weng
+    name: Lilian Weng (Thinking Machines Lab, ex-OpenAI)
+    pillar_tags: [3, 4]
+    type: personal_blog
+    primary: { kind: rss, url: https://lilianweng.github.io/feed.xml }
+    geo: us
+    signal_density: very_high
+    notes: Track A 學科教材主源,系統性整理 frontier capability
+
+  - id: ilya-sutskever
+    name: Ilya Sutskever (SSI)
+    pillar_tags: [3]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: twitter, handle: ilyasut }]
+    geo: us
+    signal_density: medium
+
+  - id: greg-brockman
+    name: Greg Brockman (OpenAI)
+    pillar_tags: [3, 4]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: twitter, handle: gdb }]
+    geo: us
+    signal_density: medium
+
+  - id: jeff-dean
+    name: Jeff Dean (Google DeepMind)
+    pillar_tags: [3, 4]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: twitter, handle: JeffDean }]
+    geo: us
+    signal_density: medium
+
+  - id: sholto-douglas
+    name: Sholto Douglas (Anthropic)
+    pillar_tags: [3, 4]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: twitter, handle: sholtodouglas }]
+    geo: us
+    signal_density: high
+
+  - id: trenton-bricken
+    name: Trenton Bricken (Anthropic interpretability)
+    pillar_tags: [3]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: twitter, handle: TrentonBricken }]
+    geo: us
+    signal_density: high
+
+  - id: yoshua-bengio
+    name: Yoshua Bengio (Mila)
+    pillar_tags: [3]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: scrape, url: https://yoshuabengio.org/ }]
+    geo: canada
+    signal_density: medium
+    notes: AI safety 角度
+
+  # ===========================================================================
+  # 👤 PRACTITIONER ENGINEERS — Individual blogs/multi-platform
+  # ===========================================================================
+
+  - id: hamel-husain
+    name: Hamel Husain
+    pillar_tags: [4]
+    type: personal_blog
+    primary:
+      - { kind: rss, url: https://hamel.dev/index.xml }
+      - { kind: twitter, handle: HamelHusain }
+      - { kind: substack, url: https://hamelhusain.substack.com }
+      - { kind: course, url: https://maven.com/parlance-labs/evals }
+    geo: us
+    signal_density: very_high
+    notes: THE evals voice; Track D 主軸
+
+  - id: eugene-yan
+    name: Eugene Yan
+    pillar_tags: [4]
+    type: personal_blog
+    primary: { kind: rss, url: https://eugeneyan.com/rss/ }
+    fallback: [{ kind: twitter, handle: eugeneyan }]
+    geo: us
+    signal_density: very_high
+
+  - id: chip-huyen
+    name: Chip Huyen
+    pillar_tags: [4]
+    type: personal_blog
+    primary: { kind: rss, url: https://huyenchip.com/feed.xml }
+    fallback: [{ kind: twitter, handle: chipro }]
+    geo: us
+    signal_density: very_high
+    notes: Author of "Designing ML Systems" + "AI Engineering"
+
+  - id: simon-willison
+    name: Simon Willison
+    pillar_tags: [3, 4]
+    type: personal_blog
+    primary: { kind: rss, url: https://simonwillison.net/atom/everything/ }
+    fallback: [{ kind: mastodon, handle: simon@simonwillison.net }]
+    geo: us
+    signal_density: very_high
+    notes: Frontier 工具實驗速度極快、有觀點
+
+  - id: jxnl-jason-liu
+    name: jxnl (Jason Liu) - Instructor
+    pillar_tags: [4]
+    type: personal_blog
+    primary: { kind: rss, url: https://jxnl.co/feed.xml }
+    fallback: [{ kind: github, repo: jxnl/instructor }]
+    geo: us
+    signal_density: high
+    notes: Track B 主軸,structured output 圈領袖
+
+  - id: swyx-shawn-wang
+    name: swyx / Shawn Wang (Latent Space)
+    pillar_tags: [4, 5]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: rss, url: https://www.latent.space/feed }
+      - { kind: twitter, handle: swyx }
+    geo: us
+    signal_density: very_high
+
+  - id: logan-kilpatrick
+    name: Logan Kilpatrick (Google DeepMind, ex-OpenAI DevRel)
+    pillar_tags: [4]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: twitter, handle: OfficialLoganK }]
+    geo: us
+    signal_density: high
+
+  - id: jeremy-howard
+    name: Jeremy Howard (fast.ai, Answer.AI)
+    pillar_tags: [4]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: rss, url: https://www.fast.ai/atom.xml }
+      - { kind: twitter, handle: jeremyphoward }
+    geo: us
+    signal_density: high
+
+  - id: harrison-chase
+    name: Harrison Chase (LangChain)
+    pillar_tags: [4]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: rss, url: https://blog.langchain.dev/rss/ }
+      - { kind: twitter, handle: hwchase17 }
+    geo: us
+    signal_density: high
+
+  - id: vicki-boykis
+    name: Vicki Boykis (Duolingo)
+    pillar_tags: [4]
+    type: personal_blog
+    primary: { kind: rss, url: https://vickiboykis.com/feed.xml }
+    geo: us
+    signal_density: high
+    notes: Embeddings deep work
+
+  - id: engineering-agents-substack
+    name: engineeringagents.substack.com
+    pillar_tags: [4]
+    type: personal_blog
+    primary: { kind: substack, url: https://engineeringagents.substack.com/feed }
+    geo: us
+    signal_density: high
+
+  - id: russ-miles
+    name: Russ Miles
+    pillar_tags: [4]
+    type: personal_blog
+    primary: { kind: scrape, url: https://www.russmiles.com }
+    geo: europe
+    signal_density: medium
+
+  - id: benny-johns
+    name: Benny Johns
+    pillar_tags: [4]
+    type: personal_blog
+    primary: { kind: scrape, url: https://www.bennyjohns.com }
+    geo: us
+    signal_density: medium
+
+  # ===========================================================================
+  # 🏗️ AI DEPLOYMENT COMPANIES (Pillar 1 + 4)
+  # ===========================================================================
+
+  - id: palantir
+    name: Palantir (Blog + Customer Stories + Technical)
+    pillar_tags: [1, 2, 4]
+    type: vendor_blog
+    primary:
+      - { kind: rss, url: https://blog.palantir.com/feed }
+      - { kind: scrape, url: https://www.palantir.com/customers }
+      - { kind: scrape, url: https://www.palantir.com/docs }
+    geo: us
+    signal_density: very_high
+    notes: 部署團隊內容 = AI 顧問業 thought leader; Livia 工作直接最高價值來源
+
+  - id: cursor
+    name: Cursor (AI Code Agent)
+    pillar_tags: [4]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://cursor.com/blog }
+    geo: us
+    signal_density: high
+
+  - id: cognition-devin
+    name: Cognition (Devin)
+    pillar_tags: [4]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.cognition.ai/blog }
+    geo: us
+    signal_density: high
+
+  - id: bloomberg-ai
+    name: Bloomberg AI Engineering (public posts)
+    pillar_tags: [1, 4]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.bloomberg.com/company/values/tech-at-bloomberg/ }
+    fallback: [{ kind: linkedin_aggregation, org: bloomberg }]
+    geo: us
+    signal_density: high
+    notes: BFSI tier-1 deployment baseline
+
+  - id: klarna-engineering
+    name: Klarna Engineering Blog
+    pillar_tags: [1, 4]
+    type: enterprise_engineering_blog
+    primary: { kind: rss, url: https://engineering.klarna.com/feed }
+    geo: europe
+    signal_density: high
+
+  - id: hebbia
+    name: Hebbia (Enterprise Search)
+    pillar_tags: [1, 4]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.hebbia.com/blog }
+    geo: us
+    signal_density: medium
+
+  - id: decagon
+    name: Decagon (Customer Service Agents)
+    pillar_tags: [1, 4]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://decagon.ai/blog }
+    geo: us
+    signal_density: medium
+
+  - id: sierra
+    name: Sierra (Customer Service Agents)
+    pillar_tags: [1, 4]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://sierra.ai/blog }
+    geo: us
+    signal_density: medium
+
+  - id: harvey
+    name: Harvey (Legal AI)
+    pillar_tags: [1, 4]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.harvey.ai/blog }
+    geo: us
+    signal_density: medium
+
+  - id: abridge
+    name: Abridge (Healthcare AI)
+    pillar_tags: [1, 4]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.abridge.com/blog }
+    geo: us
+    signal_density: medium
+
+  - id: stripe-ai-engineering
+    name: Stripe AI Engineering
+    pillar_tags: [4]
+    type: enterprise_engineering_blog
+    primary: { kind: rss, url: https://stripe.com/blog/feed.rss }
+    geo: us
+    signal_density: very_high
+    notes: Production AI engineering gold standard
+
+  - id: vercel-ai-sdk
+    name: Vercel AI SDK Blog
+    pillar_tags: [4]
+    type: vendor_blog
+    primary: { kind: rss, url: https://vercel.com/blog/rss.xml }
+    geo: us
+    signal_density: medium
+
+  # ===========================================================================
+  # 🏢 BIG TECH — Enterprise AI Arms
+  # ===========================================================================
+
+  - id: microsoft-industry-solutions
+    name: Microsoft Industry Solutions
+    pillar_tags: [1, 2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.microsoft.com/en-us/industry/blog }
+    geo: us
+    signal_density: high
+    notes: IBM Consulting 直接競品
+
+  - id: google-cloud-industry
+    name: Google Cloud Industry Practice
+    pillar_tags: [1, 2]
+    type: vendor_blog
+    primary: { kind: rss, url: https://cloud.google.com/blog/topics/industries/rss }
+    geo: us
+    signal_density: high
+
+  - id: aws-industry
+    name: AWS Industry Specialists
+    pillar_tags: [1, 2]
+    type: vendor_blog
+    primary: { kind: rss, url: https://aws.amazon.com/blogs/industries/feed/ }
+    geo: us
+    signal_density: medium
+
+  - id: ibm-consulting
+    name: IBM Consulting (own benchmark)
+    pillar_tags: [1, 2]
+    type: vendor_blog
+    primary: { kind: rss, url: https://www.ibm.com/blog/rss/ }
+    geo: us
+    signal_density: medium
+    notes: 自家對標,看 IBM narrative 變化
+
+  - id: oracle-ai
+    name: Oracle AI Blog
+    pillar_tags: [1, 2]
+    type: vendor_blog
+    primary: { kind: rss, url: https://blogs.oracle.com/ai-and-datascience/rss }
+    geo: us
+    signal_density: medium
+
+  # ===========================================================================
+  # 🎩 MBB — McKinsey / BCG / Bain
+  # ===========================================================================
+
+  - id: mckinsey-quantumblack
+    name: McKinsey QuantumBlack
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: rss, url: https://www.mckinsey.com/capabilities/quantumblack/our-insights/rss }
+    geo: us
+    signal_density: high
+
+  - id: mckinsey-mgi
+    name: McKinsey Global Institute
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.mckinsey.com/mgi/our-research }
+    geo: us
+    signal_density: high
+    notes: AI economy 量化權威
+
+  - id: bcg-gamma
+    name: BCG GAMMA / X
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.bcg.com/x }
+    geo: us
+    signal_density: high
+
+  - id: bcg-henderson
+    name: BCG Henderson Institute
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://bcghendersoninstitute.com }
+    geo: us
+    signal_density: medium
+
+  - id: bain-vector
+    name: Bain Vector
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.bain.com/vector-digital/ }
+    geo: us
+    signal_density: medium
+
+  # ===========================================================================
+  # 📊 BIG 4
+  # ===========================================================================
+
+  - id: pwc-strategy-ai
+    name: PwC Strategy& AI
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.strategyand.pwc.com/gx/en/unique-solutions/ai.html }
+    geo: us
+    signal_density: medium
+
+  - id: ey-ai
+    name: EY AI Insights
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.ey.com/en_gl/insights/ai }
+    geo: us
+    signal_density: medium
+
+  - id: kpmg-ai
+    name: KPMG AI
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://kpmg.com/xx/en/our-insights/ai-and-technology.html }
+    geo: us
+    signal_density: medium
+
+  - id: deloitte-ai-institute
+    name: Deloitte AI Institute
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www2.deloitte.com/us/en/pages/consulting/topics/ai-institute.html }
+    geo: us
+    signal_density: medium
+
+  # ===========================================================================
+  # 🔬 ACADEMIC THINK TANK
+  # ===========================================================================
+
+  - id: stanford-hai
+    name: Stanford HAI
+    pillar_tags: [2, 3]
+    type: vendor_blog
+    primary: { kind: rss, url: https://hai.stanford.edu/news/rss }
+    geo: us
+    signal_density: high
+    notes: AI Index Report 是年度權威
+
+  - id: mit-sloan-cisr
+    name: MIT Sloan CISR
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://cisr.mit.edu/publication }
+    geo: us
+    signal_density: medium
+
+  - id: hbs-digital
+    name: HBS Digital Initiative
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://d3.harvard.edu/research/ }
+    geo: us
+    signal_density: medium
+
+  - id: anthropic-economic-index
+    name: Anthropic Economic Index
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.anthropic.com/economic-index }
+    geo: us
+    signal_density: high
+    notes: AI 對經濟 / 勞動結構的一手數據,C-Level 引用價值極高
+
+  - id: hbr-ai
+    name: Harvard Business Review (AI tag)
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://hbr.org/topic/artificial-intelligence }
+    geo: us
+    signal_density: medium
+
+  # ===========================================================================
+  # 🏭 MANUFACTURING — Industrial AI Companies
+  # ===========================================================================
+
+  - id: siemens-digital-industries
+    name: Siemens Digital Industries
+    pillar_tags: [1]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://blog.siemens.com }
+    geo: europe
+    signal_density: high
+
+  - id: bosch-ai
+    name: Bosch Center for AI
+    pillar_tags: [1]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.bosch-ai.com }
+    geo: europe
+    signal_density: medium
+
+  - id: schneider-ecostruxure
+    name: Schneider Electric EcoStruxure
+    pillar_tags: [1]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://blog.se.com }
+    geo: europe
+    signal_density: medium
+
+  - id: abb-ability
+    name: ABB Ability
+    pillar_tags: [1]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://new.abb.com/abb-ability }
+    geo: europe
+    signal_density: medium
+
+  - id: rockwell-automation
+    name: Rockwell Automation
+    pillar_tags: [1]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.rockwellautomation.com/en-us/company/news.html }
+    geo: us
+    signal_density: medium
+
+  - id: honeywell-forge
+    name: Honeywell Forge
+    pillar_tags: [1]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.honeywell.com/us/en/forge }
+    geo: us
+    signal_density: medium
+
+  - id: ge-digital
+    name: GE Digital
+    pillar_tags: [1]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.ge.com/digital/blog }
+    geo: us
+    signal_density: medium
+
+  - id: mitsubishi-electric
+    name: Mitsubishi Electric e-F@ctory
+    pillar_tags: [1]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.mitsubishielectric.com/fa/efactory.html }
+    geo: asia_other
+    signal_density: medium
+
+  - id: foxconn-hon-hai
+    name: Foxconn / 鴻海
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary:
+      - { kind: scrape, url: https://www.foxconn.com/en-us/press-center }
+      - { kind: scrape, url: https://www.honhai.com/en-us/news }
+    geo: taiwan
+    signal_density: medium
+
+  - id: wistron
+    name: Wistron / 緯創
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.wistron.com/News }
+    fallback: [{ kind: scrape, url: 'https://ir.wistron.com' }]
+    geo: taiwan
+    signal_density: high
+    notes: Livia 直接客戶,IR + press release 必抓
+
+  - id: pegatron
+    name: Pegatron 和碩
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.pegatroncorp.com/news }
+    geo: taiwan
+    signal_density: medium
+
+  - id: quanta-computer
+    name: Quanta 廣達
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.quantatw.com/Quanta/english/news/news.aspx }
+    geo: taiwan
+    signal_density: medium
+
+  - id: compal
+    name: Compal 仁寶
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.compal.com/news/ }
+    geo: taiwan
+    signal_density: low
+
+  - id: inventec
+    name: Inventec 英業達
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.inventec.com/en/news }
+    geo: taiwan
+    signal_density: low
+
+  - id: tsmc
+    name: TSMC (Tech Symposium + IR)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.tsmc.com/english/news-events/news-archive }
+    geo: taiwan
+    signal_density: high
+    notes: AI fab capacity 最關鍵,但對外披露少
+
+  - id: asml
+    name: ASML
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.asml.com/en/news }
+    geo: europe
+    signal_density: medium
+
+  - id: mediatek
+    name: MediaTek 聯發科
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://corp.mediatek.com/news-events }
+    geo: taiwan
+    signal_density: medium
+
+  # ===========================================================================
+  # 🏭 MANUFACTURING AI STARTUPS
+  # ===========================================================================
+
+  - id: cognex
+    name: Cognex (Industrial Vision AI)
+    pillar_tags: [1]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.cognex.com/blogs }
+    geo: us
+    signal_density: low
+
+  - id: augury
+    name: Augury (Predictive Maintenance)
+    pillar_tags: [1]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.augury.com/blog }
+    geo: us
+    signal_density: low
+
+  - id: tulip
+    name: Tulip (Frontline Operations)
+    pillar_tags: [1]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://tulip.co/blog }
+    geo: us
+    signal_density: low
+
+  # ===========================================================================
+  # 🏦 BANKING / FINANCE — International
+  # ===========================================================================
+
+  - id: bofa-erica
+    name: Bank of America (Erica + Tech blog)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://newsroom.bankofamerica.com }
+    geo: us
+    signal_density: medium
+
+  - id: jpmorgan-coin
+    name: JPMorgan Chase Tech / COiN
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.jpmorgan.com/technology }
+    geo: us
+    signal_density: high
+
+  - id: morgan-stanley-ai
+    name: Morgan Stanley AI Assistant + Tech
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.morganstanley.com/about-us/technology }
+    geo: us
+    signal_density: high
+
+  - id: goldman-sachs-engineering
+    name: Goldman Sachs Engineering
+    pillar_tags: [1, 4]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://developer.gs.com/blog }
+    geo: us
+    signal_density: medium
+
+  - id: wells-fargo-tech
+    name: Wells Fargo Innovation
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://newsroom.wf.com }
+    geo: us
+    signal_density: low
+
+  - id: capital-one-tech
+    name: Capital One Tech Blog
+    pillar_tags: [1, 4]
+    type: enterprise_engineering_blog
+    primary: { kind: rss, url: https://www.capitalone.com/tech/blog/feed/ }
+    geo: us
+    signal_density: high
+    notes: 對 AI/ML 公開最積極的 BFSI
+
+  - id: hsbc
+    name: HSBC (AML AI / Dynamic Risk Assessment)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.hsbc.com/news-and-views }
+    geo: europe
+    signal_density: medium
+
+  - id: standard-chartered
+    name: Standard Chartered
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.sc.com/en/news }
+    geo: asia_other
+    signal_density: low
+
+  - id: dbs-bank
+    name: DBS (Joy + Tech)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.dbs.com/newsroom/default.page }
+    geo: asia_other
+    signal_density: high
+
+  - id: ocbc
+    name: OCBC
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.ocbc.com/group/media }
+    geo: asia_other
+    signal_density: low
+
+  - id: uob
+    name: UOB
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.uobgroup.com/web-resources/uobgroup/pdf/announcements }
+    geo: asia_other
+    signal_density: low
+
+  - id: mizuho
+    name: Mizuho Financial Group
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.mizuhogroup.com/news-events }
+    geo: asia_other
+    signal_density: low
+
+  # ===========================================================================
+  # 🏦 BANKING / FINANCE — Taiwan
+  # ===========================================================================
+
+  - id: cathay-financial
+    name: 國泰金控 (Cathay Financial Holdings, Agia + GAIA Studio)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.cathayholdings.com/holdings/news }
+    geo: taiwan
+    signal_density: high
+    notes: Agia + GAIA Studio,28 部門 40+ 應用
+
+  - id: fubon-financial
+    name: 富邦金控 (Fubon Financial Holdings)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.fubon.com/financialholdings/news }
+    geo: taiwan
+    signal_density: medium
+    notes: NLP 跨子公司知識檢索
+
+  - id: esun-financial
+    name: 玉山金控 (E.SUN Financial Holding, 金秘書)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.esunfhc.com/zh-tw/news }
+    geo: taiwan
+    signal_density: high
+    notes: 你既有 wiki 已記載 esun-ai-governance 案
+
+  - id: ctbc
+    name: 中信金控 (CTBC, 智尊保 / 智能客服 PLUS)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.ctbcholding.com/twh/about/news.html }
+    geo: taiwan
+    signal_density: high
+    notes: Sherlock AML; 你 wiki 已記載 ctbc-綠色偵碳 案
+
+  - id: taipei-fubon
+    name: 台北富邦銀行 (Taipei Fubon, AI 鷹眼識詐)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.taipeifubon.com.tw/main_en/news.htm }
+    geo: taiwan
+    signal_density: medium
+
+  - id: taishin-bank
+    name: 台新銀行 (Taishin, Richart Rose Chatbot)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.taishinbank.com.tw/TSB/news }
+    geo: taiwan
+    signal_density: medium
+
+  - id: mega-bank
+    name: 兆豐銀行 (Mega Bank)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.megabank.com.tw }
+    geo: taiwan
+    signal_density: low
+
+  - id: first-bank
+    name: 第一銀行 (First Bank)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.firstbank.com.tw }
+    geo: taiwan
+    signal_density: low
+
+  - id: sinopac-bank
+    name: 永豐銀行 (SinoPac)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://bank.sinopac.com }
+    geo: taiwan
+    signal_density: low
+
+  - id: tcb-bank
+    name: 合作金庫 (Taiwan Cooperative Bank, eLoan)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.tcb-bank.com.tw }
+    geo: taiwan
+    signal_density: medium
+    notes: 你 wiki 已記載 tcb-eloan 智能授信徵審案
+
+  # ===========================================================================
+  # 🛡️ INSURANCE / INSURTECH
+  # ===========================================================================
+
+  - id: cathay-life
+    name: 國泰人壽 (Cathay Life)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.cathaylife.com.tw }
+    geo: taiwan
+    signal_density: medium
+
+  - id: fubon-life
+    name: 富邦人壽 (Fubon Life)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.fubon.com/life }
+    geo: taiwan
+    signal_density: low
+
+  - id: nan-shan-life
+    name: 南山人壽 (Nan Shan Life)
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.nanshanlife.com.tw }
+    geo: taiwan
+    signal_density: medium
+    notes: 你 wiki 已記載 nsl-數據賦能專案
+
+  - id: ping-an-tech
+    name: 中國平安 Ping An Technology
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://tech.pingan.com }
+    geo: china
+    signal_density: medium
+
+  - id: zhongan-tech
+    name: ZhongAn 眾安科技
+    pillar_tags: [1]
+    type: enterprise_engineering_blog
+    primary: { kind: scrape, url: https://www.zhongan.com/about/news }
+    geo: china
+    signal_density: low
+
+  - id: lemonade
+    name: Lemonade (InsurTech)
+    pillar_tags: [1]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.lemonade.com/blog }
+    geo: us
+    signal_density: low
+
+  # ===========================================================================
+  # 💰 VC / Investor Influencers
+  # ===========================================================================
+
+  - id: a16z-publications
+    name: a16z (Future + AI publication)
+    pillar_tags: [2, 5]
+    type: vendor_blog
+    primary:
+      - { kind: rss, url: https://future.com/feed/ }
+      - { kind: rss, url: https://a16z.com/feed/ }
+    geo: us
+    signal_density: very_high
+    notes: AI Canon 維護者,thought-leader narrative 造市
+
+  - id: marc-andreessen
+    name: Marc Andreessen (a16z)
+    pillar_tags: [2]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: twitter, handle: pmarca }]
+    geo: us
+    signal_density: medium
+
+  - id: sequoia-capital
+    name: Sequoia Capital Perspectives
+    pillar_tags: [2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.sequoiacap.com/articles }
+    geo: us
+    signal_density: high
+
+  - id: sarah-guo
+    name: Sarah Guo (Conviction / No Priors)
+    pillar_tags: [4, 5]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: rss, url: https://www.no-priors.com/feed.xml }
+      - { kind: twitter, handle: saranormous }
+    geo: us
+    signal_density: high
+
+  - id: elad-gil
+    name: Elad Gil (Independent)
+    pillar_tags: [2]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: blog, url: https://blog.eladgil.com }
+      - { kind: twitter, handle: eladgil }
+    geo: us
+    signal_density: high
+
+  - id: brad-gerstner
+    name: Brad Gerstner (Altimeter, BG2 podcast)
+    pillar_tags: [2]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: youtube, channel: BG2Pod }
+      - { kind: twitter, handle: altcap }
+    geo: us
+    signal_density: high
+
+  # ===========================================================================
+  # 📰 TECH BUSINESS ANALYSTS
+  # ===========================================================================
+
+  - id: stratechery
+    name: Stratechery (Ben Thompson)
+    pillar_tags: [2]
+    type: paywall
+    primary: { kind: rss_partial, url: https://stratechery.com/feed/ }
+    fallback:
+      - { kind: twitter, handle: benthompson }
+      - { kind: podcast, name: Sharp Tech }
+    geo: us
+    signal_density: very_high
+    human_required: true
+    paywall: true
+
+  - id: decoder-podcast
+    name: Decoder (Nilay Patel)
+    pillar_tags: [2]
+    type: podcast
+    primary: { kind: rss, url: https://feeds.megaphone.fm/decoder }
+    geo: us
+    signal_density: high
+
+  - id: platformer
+    name: Platformer (Casey Newton)
+    pillar_tags: [2]
+    type: newsletter
+    primary: { kind: rss, url: https://www.platformer.news/feed }
+    geo: us
+    signal_density: high
+
+  - id: hardcore-software
+    name: Hardcore Software (Steven Sinofsky)
+    pillar_tags: [2]
+    type: personal_blog
+    primary: { kind: rss, url: https://hardcoresoftware.learningbyshipping.com/feed }
+    geo: us
+    signal_density: high
+
+  - id: the-information-ai
+    name: The Information AI
+    pillar_tags: [2]
+    type: paywall
+    primary: { kind: scrape, url: https://www.theinformation.com/topics/ai }
+    geo: us
+    signal_density: high
+    human_required: true
+    paywall: true
+
+  - id: spyglass-mg-siegler
+    name: Spyglass (M.G. Siegler)
+    pillar_tags: [2]
+    type: newsletter
+    primary: { kind: rss, url: https://spyglass.org/feed/ }
+    geo: us
+    signal_density: medium
+
+  # ===========================================================================
+  # 🌏 EAST ASIA AI THOUGHT LEADERS
+  # ===========================================================================
+
+  - id: kai-fu-lee
+    name: Kai-Fu Lee 李開復 (Sinovation / 01.AI)
+    pillar_tags: [2, 3]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: twitter, handle: kaifulee }
+      - { kind: scrape, url: 'https://www.01.ai' }
+    geo: china
+    signal_density: high
+
+  - id: mark-liu-ailabs-tw
+    name: 杜奕瑾 Mark Liu (Taiwan AI Labs)
+    pillar_tags: [1, 2]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: scrape, url: https://ailabs.tw }]
+    geo: taiwan
+    signal_density: high
+    notes: 台灣 AI 政策 + 技術交集,在地 thought leader
+
+  - id: harry-shum
+    name: Harry Shum 沈向洋 (IDEA Research)
+    pillar_tags: [3]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: interview_aggregation, source: chinese_tech_media }]
+    geo: china
+    signal_density: medium
+
+  - id: ya-qin-zhang
+    name: Ya-Qin Zhang 張亞勤 (Tsinghua AIIR)
+    pillar_tags: [3]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: interview_aggregation, source: chinese_tech_media }]
+    geo: china
+    signal_density: medium
+
+  - id: mr-jamie-appworks
+    name: 林之晨 Mr. Jamie (AppWorks)
+    pillar_tags: [2, 5]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: blog, url: https://mrjamie.cc }
+      - { kind: scrape, url: https://blog.appworks.tw }
+    geo: taiwan
+    signal_density: medium
+
+  - id: audrey-tang
+    name: 唐鳳 Audrey Tang (前數位部部長)
+    pillar_tags: [2]
+    type: individual_influencer_multiplatform
+    primary: [{ kind: twitter, handle: audreyt }]
+    geo: taiwan
+    signal_density: medium
+    notes: AI 政策 angle
+
+  - id: lisa-su-amd
+    name: Lisa Su 蘇姿丰 (AMD CEO)
+    pillar_tags: [1, 2, 3]
+    type: individual_influencer_multiplatform
+    primary:
+      - { kind: youtube, channel: AMD, filter: lisa_su_keynote }
+      - { kind: earnings_call, ticker: AMD }
+    geo: us
+    signal_density: high
+
+  # ===========================================================================
+  # 🎙️ NEWSLETTERS / PODCASTS / COMMUNITIES (Pillar 5 主場)
+  # ===========================================================================
+
+  - id: latent-space
+    name: Latent Space (podcast + newsletter + reading list)
+    pillar_tags: [4, 5]
+    type: newsletter
+    primary:
+      - { kind: rss, url: https://www.latent.space/feed }
+      - { kind: rss, url: https://api.substack.com/feed/podcast/1084089.rss }
+    geo: us
+    signal_density: very_high
+    notes: 圈內樞紐,幾乎所有 harness eng 圈訊息流經
+
+  - id: interconnects
+    name: Interconnects (Nathan Lambert)
+    pillar_tags: [3, 4]
+    type: newsletter
+    primary: { kind: rss, url: https://www.interconnects.ai/feed }
+    geo: us
+    signal_density: very_high
+    notes: RLHF / post-training 圈最深
+
+  - id: dwarkesh-patel
+    name: Dwarkesh Patel Podcast
+    pillar_tags: [3, 5]
+    type: podcast
+    primary: { kind: rss, url: https://www.dwarkeshpatel.com/feed }
+    geo: us
+    signal_density: very_high
+    notes: 跟頂級 frontier 人物深度訪談
+
+  - id: import-ai
+    name: Import AI (Jack Clark, Anthropic policy)
+    pillar_tags: [2, 3, 5]
+    type: newsletter
+    primary: { kind: rss, url: https://jack-clark.net/feed/ }
+    geo: us
+    signal_density: high
+
+  - id: ai-snake-oil
+    name: AI Snake Oil (Arvind Narayanan / Sayash Kapoor)
+    pillar_tags: [2, 5]
+    type: newsletter
+    primary: { kind: rss, url: https://www.aisnakeoil.com/feed }
+    geo: us
+    signal_density: high
+    notes: Frontier 圈外 sober 觀點,反平衡用
+
+  - id: the-batch-deeplearning-ai
+    name: The Batch (DeepLearning.AI / Andrew Ng)
+    pillar_tags: [3, 5]
+    type: newsletter
+    primary: { kind: rss, url: https://www.deeplearning.ai/the-batch/feed/ }
+    geo: us
+    signal_density: medium
+
+  - id: agents-blog
+    name: agents.blog (AI Agent Community)
+    pillar_tags: [4, 5]
+    type: newsletter
+    primary: { kind: scrape, url: https://agents.blog }
+    geo: us
+    signal_density: medium
+
+  - id: last-week-in-ai
+    name: Last Week in AI
+    pillar_tags: [5]
+    type: newsletter
+    primary: { kind: rss, url: https://lastweekin.ai/feed }
+    geo: us
+    signal_density: medium
+    notes: 廣度兜底用
+
+  - id: bens-bites
+    name: Ben's Bites
+    pillar_tags: [5]
+    type: newsletter
+    primary: { kind: rss, url: https://bensbites.beehiiv.com/feed }
+    geo: us
+    signal_density: medium
+
+  - id: tldr-ai
+    name: TLDR AI
+    pillar_tags: [5]
+    type: newsletter
+    primary: { kind: scrape, url: https://tldr.tech/ai }
+    geo: us
+    signal_density: medium
+
+  - id: no-priors
+    name: No Priors (Sarah Guo + Elad Gil)
+    pillar_tags: [4, 5]
+    type: podcast
+    primary: { kind: rss, url: https://www.no-priors.com/feed.xml }
+    geo: us
+    signal_density: high
+
+  - id: practical-ai
+    name: Practical AI
+    pillar_tags: [4]
+    type: podcast
+    primary: { kind: rss, url: https://changelog.com/practicalai/feed }
+    geo: us
+    signal_density: medium
+
+  # ===========================================================================
+  # 🏛️ REGULATORY (低頻 / Foundation reference,不在每週 Pulse 池)
+  # ===========================================================================
+
+  - id: fsc-taiwan
+    name: 金管會 (Taiwan FSC, 監理沙盒公告)
+    pillar_tags: [1, 2]
+    type: regulatory
+    primary: { kind: rss, url: https://www.fsc.gov.tw/ch/index.jsp }
+    geo: taiwan
+    signal_density: high
+    notes: 在地化必抓,銀行業 AI 新動作幾乎都先過沙盒
+
+  - id: eu-ai-act-tracker
+    name: EU AI Act Tracker
+    pillar_tags: [2]
+    type: regulatory
+    primary: { kind: scrape, url: https://artificialintelligenceact.eu }
+    geo: europe
+    signal_density: medium
+
+  - id: nist-ai-rmf
+    name: NIST AI RMF (Foundation reference only)
+    pillar_tags: [2]
+    type: regulatory
+    primary: { kind: scrape, url: https://www.nist.gov/itl/ai-risk-management-framework }
+    geo: us
+    signal_density: low
+    pulse_eligible: false
+    foundation_reference: true
+    notes: 萬年低頻文件,僅 Foundation 治理主題深讀時調用
+
+  - id: federal-reserve-ai
+    name: Federal Reserve / OCC AI Guidance
+    pillar_tags: [1, 2]
+    type: regulatory
+    primary: { kind: scrape, url: https://www.federalreserve.gov/supervisionreg/srletters/srletters.htm }
+    geo: us
+    signal_density: low
+
+  - id: hkma-ai
+    name: HKMA AI Principles
+    pillar_tags: [1, 2]
+    type: regulatory
+    primary: { kind: scrape, url: https://www.hkma.gov.hk/eng/news-and-media/ }
+    geo: asia_other
+    signal_density: low
+
+  - id: mas-veritas
+    name: MAS (Singapore) Veritas / FEAT
+    pillar_tags: [1, 2]
+    type: regulatory
+    primary: { kind: scrape, url: https://www.mas.gov.sg/news }
+    geo: asia_other
+    signal_density: low
+
+  # ===========================================================================
+  # 📰 TAIWAN MEDIA / INDUSTRY ANALYST
+  # ===========================================================================
+
+  - id: ithome-tw
+    name: iThome
+    pillar_tags: [1, 4]
+    type: newsletter
+    primary: { kind: rss, url: https://www.ithome.com.tw/rss }
+    geo: taiwan
+    signal_density: high
+    notes: 台灣 IT 主流,本地 AI 案件 + 銀行業 / 製造業實作報導
+
+  - id: cio-taiwan
+    name: CIO Taiwan
+    pillar_tags: [1, 2]
+    type: newsletter
+    primary: { kind: scrape, url: https://www.cio.com.tw }
+    geo: taiwan
+    signal_density: medium
+
+  - id: bnext-digi-magazine
+    name: 數位時代 BNext
+    pillar_tags: [1, 2, 5]
+    type: newsletter
+    primary: { kind: rss, url: https://www.bnext.com.tw/rss/category/all }
+    geo: taiwan
+    signal_density: medium
+
+  - id: ctee-tech
+    name: 工商時報科技版
+    pillar_tags: [1, 2]
+    type: newsletter
+    primary: { kind: scrape, url: https://www.ctee.com.tw/livenews/aj }
+    geo: taiwan
+    signal_density: medium
+
+  - id: udn-money-fintech
+    name: 經濟日報金融科技版
+    pillar_tags: [1, 2]
+    type: newsletter
+    primary: { kind: scrape, url: https://money.udn.com/money/cate/12017 }
+    geo: taiwan
+    signal_density: medium
+
+  - id: inside-tw
+    name: INSIDE 硬塞
+    pillar_tags: [1, 4, 5]
+    type: newsletter
+    primary: { kind: rss, url: https://www.inside.com.tw/feed }
+    geo: taiwan
+    signal_density: medium
+
+  - id: technews-tw
+    name: 科技新報 TechNews
+    pillar_tags: [1, 4]
+    type: newsletter
+    primary: { kind: rss, url: https://technews.tw/feed/ }
+    geo: taiwan
+    signal_density: medium
+
+  # ===========================================================================
+  # 🇹🇼 TAIWAN PUBLIC SECTOR
+  # ===========================================================================
+
+  - id: moda-taiwan
+    name: 數位部 (Ministry of Digital Affairs, Taiwan)
+    pillar_tags: [1, 2]
+    type: regulatory
+    primary: { kind: scrape, url: https://moda.gov.tw }
+    geo: taiwan
+    signal_density: medium
+
+  - id: nstc-taiwan
+    name: 國科會 (National Science and Technology Council, Taiwan)
+    pillar_tags: [2]
+    type: regulatory
+    primary: { kind: scrape, url: https://www.nstc.gov.tw }
+    geo: taiwan
+    signal_density: low
+
+  - id: itri-taiwan
+    name: 工研院 ITRI
+    pillar_tags: [1]
+    type: vendor_blog
+    primary: { kind: scrape, url: "https://www.itri.org.tw/ListStyle.aspx?DisplayStyle=03" }
+    geo: taiwan
+    signal_density: medium
+
+  - id: iii-taiwan
+    name: 資策會 III
+    pillar_tags: [1, 2]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.iii.org.tw }
+    geo: taiwan
+    signal_density: low
+
+  # ===========================================================================
+  # 📚 PAPER FEEDS
+  # ===========================================================================
+
+  - id: arxiv-cs-ai
+    name: arXiv cs.AI + cs.CL + cs.LG (filtered)
+    pillar_tags: [3, 4]
+    type: research_paper_feed
+    primary:
+      - { kind: arxiv_api, query: 'cat:cs.AI OR cat:cs.CL OR cat:cs.LG' }
+    fallback: [{ kind: scrape, url: https://arxiv-sanity-lite.com }]
+    geo: us
+    signal_density: high
+    notes: Heavy filter; only LLM-篩選後保留約 5%
+
+  - id: huggingface-daily-papers
+    name: Hugging Face Daily Papers
+    pillar_tags: [3, 4]
+    type: research_paper_feed
+    primary: { kind: scrape, url: https://huggingface.co/papers }
+    geo: us
+    signal_density: high
+
+  # ===========================================================================
+  # 🎤 CONFERENCES (annual; auto-reactivate per schedule)
+  # ===========================================================================
+
+  - id: ai-engineer-worlds-fair
+    name: AI Engineer World's Fair (SF, June)
+    pillar_tags: [4, 5]
+    type: conference
+    primary: { kind: scrape, url: https://www.ai.engineer/worldsfair }
+    geo: us
+    signal_density: very_high
+    notes: 含「Harness Engineering」獨立 track,你 portfolio 直接相關
+
+  - id: ai-engineer-europe
+    name: AI Engineer Europe (London, April)
+    pillar_tags: [4, 5]
+    type: conference
+    primary: { kind: scrape, url: https://www.ai.engineer/europe }
+    geo: europe
+    signal_density: very_high
+
+  - id: neurips
+    name: NeurIPS
+    pillar_tags: [3]
+    type: conference
+    primary: { kind: scrape, url: https://neurips.cc }
+    geo: us
+    signal_density: high
+
+  - id: icml
+    name: ICML
+    pillar_tags: [3]
+    type: conference
+    primary: { kind: scrape, url: https://icml.cc }
+    geo: us
+    signal_density: high
+
+  - id: iclr
+    name: ICLR
+    pillar_tags: [3]
+    type: conference
+    primary: { kind: scrape, url: https://iclr.cc }
+    geo: us
+    signal_density: high
+
+  - id: nvidia-gtc
+    name: NVIDIA GTC
+    pillar_tags: [1, 2, 3]
+    type: conference
+    primary: { kind: scrape, url: https://www.nvidia.com/gtc/ }
+    geo: us
+    signal_density: very_high
+    notes: Jensen keynote + technical sessions; Pillar 1+2+3 cross-cutting
+
+# =============================================================================
+# TODO: 待 v0.2 補強的類別
+# =============================================================================
+
+todo_v0_2:
+  - 中文圈 substack / WeChat 公眾號(需 Livia 提供清單,搜不到)
+  - IBM 內部 source(需 Livia 提供,敏感性處理)
+  - 你個人 follow 但未列入的 X 帳號
+  - 韓文 / 日文 圈 AI source(東亞補強第二輪)
+  - 安全 / 對齊圈個別人物(Eliezer Yudkowsky, Paul Christiano, Ajeya Cotra 等)
+  - 中國頂尖實驗室更深(Tencent AI Lab, 百度 ERNIE, 阿里通義, 商湯, 智譜 GLM 等)
+
+# =============================================================================
+# CHANGELOG
+# =============================================================================
+
+changelog:
+  - version: 0.1
+    date: 2026-05-03
+    notes: |
+      Initial source registry. ~140 sources organized by category (no T1/T2/T3).
+      Architecture: wide scan + cheap filter + selective deep read.
+      Rubric-based tier system explicitly rejected during scope definition;
+      signal density determined per-cycle by Haiku triage, not per-source policy.
+      Individual influencers as first-class category (was the gap that triggered
+      the architectural pivot from tiers to flat).
