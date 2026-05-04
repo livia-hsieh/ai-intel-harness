@@ -282,7 +282,132 @@ A3 是核心:**pipeline 讀自己抓的內容,反向發現權威人物,自我擴
 
 ---
 
-## 13. Changelog
+## 13. Engagement & Eval Loop(consumer 怎麼餵 signal 回系統)
+
+**問題**:之前定義的 `livia_engagement_score` 沒指明 consumer 實際怎麼把 signal 餵回 pipeline。沒這層,所有 eval 是空的,Mechanism A1/A2 不知道憑什麼觸發。本節補上。
+
+### Layer 1 — Inline Checkbox(被動,git-tracked)
+
+每篇 briefing 結尾強制標準格式:
+
+```markdown
+---
+**Rate this briefing**:
+- [ ] ✅ useful — 已用 / 會用
+- [ ] ⚠️ meh — 太老 / 重述過的
+- [ ] ❌ skip — 不相關 / 偏題
+```
+
+Consumer 勾一個 + commit。下一次 pipeline run 讀上週 digest 的勾選狀態,per-source 計分:
+
+| 勾選 | 分數 |
+|---|---|
+| ✅ useful | 1.0 |
+| ⚠️ meh | 0.5 |
+| ❌ skip | 0.0 |
+| (未勾) | 0.3(neutral default,不懲罰忘記) |
+
+優點:**0 infra、git history 自然紀錄、綠色 ✅ 在 repo 累積本身是 portfolio 訊號**(hiring manager 看到 GitHub 有 60 週累積的 engagement marks,直接加分)。
+
+### Layer 2 — Weekly Cowork Review(主動,qualitative)
+
+Consumer 每週收到 digest 後,**回 Cowork 啟動「review last week's digest」**,Claude:
+- 讀 digest + 勾選狀態
+- 對 ⚠️ / ❌ 的 briefing 追問「為什麼?」
+- 把答案 append 到 `engagement_log.md`
+- 這個 qualitative data 餵 Mechanism A1(季度健檢)+ A2(source 增刪)
+
+時間成本:5~10 min/週。**非強制**,但連續 4 週跳過,Layer 1 訊號量不足以做決策,系統會主動 nudge。
+
+### Layer 3 — Downstream Citation Tracking(Cowork 自動捕捉,consumer 零負擔)
+
+**設計原則**:Layer 3 訊號(downstream usage)有價值但要求 consumer 手動打 tag = friction-heavy,違反「AI 服務人類」紀律。改由 Cowork(Claude)自動捕捉,consumer 完全不用記得做任何事。
+
+**機制三條(全部 AI-mediated):**
+
+1. **被動偵測**:Cowork session 中 consumer 提到任何近期 digest 內容(「上週 digest 那個 X」「那篇 Anthropic eval」),Claude 自動 grep 最近 4 期 digest 推測指向哪一篇 briefing,silently append 到 `engagement_log.md`
+2. **月度 recall check**:每月第一次 Cowork session,Claude 主動問「過去 4 期哪幾篇你實際用到客戶對話 / wiki / deck?口頭報即可」。Consumer 30 秒回答,Claude 登錄
+3. **Wiki backlink auto-propose**:Consumer 在 Cowork 寫 / 更新 wiki 頁時,Claude 自動掃內容看有沒有源自最近 digest,主動 propose「這段加 `source: digests/2026-W19` link 嗎?」,consumer 一句 yes/no
+
+**Consumer 端動作**:零。繼續正常用 Cowork 即可。**所有 tag 由 Claude 在背後維護**。
+
+**Citation log 格式**(Claude 維護):
+```markdown
+# engagement_log.md
+2026-W19#briefing-3 (Karpathy nanoGPT update) → cited 2026-05-12 (wiki update on harness-design)
+2026-W20#briefing-1 (Palantir Q1 earnings) → cited 2026-05-15 (Cathay client prep)
+```
+
+### Signal Yield 公式(per source)
+
+```
+signal_yield = digest_inclusion_rate
+             × avg_inline_checkbox_score
+             × (1.0 + downstream_citation_bonus)
+             # citation_bonus: 有 = 0.5, 無 = 0.0
+             # 所以乘數最低 1.0、最高 1.5
+
+# 4 週累積後決策
+> 0.5 → 投資 adapter / 升級
+0.2 ~ 0.5 → 維持現狀,觀察第 5~8 週
+< 0.2 → 降權
+0(0 inclusion) → 移出
+```
+
+Layer 2 qualitative data **不進公式,作為 override 使用**——Cowork 季度健檢時 consumer 跟 Claude 聊完可手動翻案。
+
+---
+
+## 14. MVP Mode(2026-05-04 起,4 週驗證期)
+
+**核心紀律**:**MVP 階段只用免費 source**,證明 pipeline value 後再投資付費 channel。
+
+### MVP-deferred(暫時關閉,不寫 code path)
+
+- **Paywall**:Stratechery、The Information AI → 走 HITL queue,但不發 weekly notification(降為 ad-hoc 手動)
+- **Twitter API**:14 個 individual influencer 不直接抓推文,**改走 echo 通道**
+
+### Echo 通道機制(免費替代 Twitter)
+
+Individual influencer 的重要發言通常 1~2 週內被以下 free source 引用,於是 Mechanism A3 自動捕捉:
+
+- Latent Space(podcast + newsletter)
+- Interconnects(Nathan Lambert)
+- Import AI(Jack Clark)
+- The Batch(吳恩達)
+- Last Week in AI / Ben's Bites / TLDR AI(廣度兜底)
+- arXiv 引用
+
+**Twitter primary 改為**:
+- 仍保留個人多通道資料,但 `mvp_mode: echo_only` 標籤
+- 主抓改成個人擁有的免費 owned media:YouTube、GitHub、個人 blog、Substack、podcast appearances
+- 例外:無自有 owned media 的 influencer(例如 Yann LeCun 主要在 X),完全靠 echo
+
+### MVP 升級條件(轉付費的觸發)
+
+4 週後,若以下兩條同時滿足,**才**評估 Twitter API 付費:
+
+1. **echo 覆蓋率 < 70%**:即重要 influencer 發言**真的有 30% 漏掉**(用 Cowork 季度 review 評估)
+2. **個別 influencer signal_yield > 0.5**:該 influencer 的內容真的值得直抓
+
+否則保持 echo only。**很可能永遠不需要付 Twitter API**。
+
+### MVP-active 設定 in sources.yaml
+
+每筆 source 加欄位:
+
+```yaml
+mvp_active: true | false
+mvp_mode: full | echo_only | hitl_adhoc
+```
+
+預設 `mvp_active: true, mvp_mode: full`。Twitter individual / paywalled 改 false / echo_only / hitl_adhoc。
+
+---
+
+## 15. Changelog
 
 - **v0.1 (2026-05-03)** — Initial scope locked. 經過 Cowork 多輪對話收斂(身份模型 → 5 Pillars → Pulse+Foundation → 4 紀律 → cadence/視覺/memory/budget/eval/meta-loop)。
 - **v0.2 (2026-05-03)** — Pillar 2 source 地圖擴張(MBB + AI-specialty boutique + Big Tech 顧問臂 + Big 4 + 學術 think tank);合成紀律從 4 條 → 6 條(加 URL 引用 + 雙語);Memory layer 加 L0 content cache;Mechanism A 改成三通路維護(A1 排程 / A2 Consumer flag / A3 系統自我發現)。
+- **v0.3 (2026-05-04)** — 加 §13 Engagement & Eval Loop(三層 engagement:inline checkbox / Cowork review / downstream citation),補上之前 hand-wave 過去的 `livia_engagement_score` 真實機制;加 §14 MVP Mode(免費 only,paywall + Twitter API deferred,個人 influencer 走 echo 通道靠其他 free source 1~2 週延遲覆蓋);釐清「wide scan 是 source 廣度不是時間廣度」並把 incremental cursor 寫進 collector spec。
+- **v0.3.1 (2026-05-04)** — Layer 3 重新設計:從「consumer 手動打 tag」改成「Cowork(Claude)自動 mediated」三條機制(被動偵測 / 月度 recall / wiki backlink auto-propose)。Consumer 端動作降到零,burden 移到 Claude。Trigger:Livia 反映 Layer 3 對她不友善——這個調整本身就是 harness eng「scaffolding 應該服務人類,不該服務 AI 自己」紀律的具體實踐。

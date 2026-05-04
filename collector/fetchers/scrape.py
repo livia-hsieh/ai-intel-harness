@@ -33,16 +33,31 @@ REQUEST_TIMEOUT_SEC = 15
 COMMON_FEED_PATHS = ("/feed", "/feed/", "/rss", "/rss.xml", "/atom.xml", "/index.xml")
 
 
-def fetch_scrape(source: Source, channel: Channel) -> Iterator[Item]:
+def fetch_scrape(
+    source: Source,
+    channel: Channel,
+    scaffolding_note: str | None = None,
+) -> Iterator[Item]:
+    """Scrape a page for article links.
+
+    `scaffolding_note`: when set, every yielded Item carries this tag so the
+    meta-loop knows the item came in via a removable fallback path (e.g.
+    "rss_unrecovered_anthropic.com" — drop the scrape adapter when Anthropic's
+    RSS comes back online).
+    """
     if not channel.url:
         return
 
     discovered_feed = _discover_feed(channel.url)
     if discovered_feed:
-        yield from fetch_rss(source, Channel(kind="rss", url=discovered_feed))
+        for item in fetch_rss(source, Channel(kind="rss", url=discovered_feed)):
+            item.scaffolding_note = scaffolding_note
+            yield item
         return
 
-    yield from _scrape_article_list(source, channel.url)
+    for item in _scrape_article_list(source, channel.url):
+        item.scaffolding_note = scaffolding_note
+        yield item
 
 
 def _discover_feed(page_url: str) -> str | None:

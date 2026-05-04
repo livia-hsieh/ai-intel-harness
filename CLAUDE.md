@@ -132,6 +132,7 @@ On conflict: filesystem (project folder / 知識庫) > Claude auto-memory.
 3. ❌ "Wiki backward probe ×3 weight" — confirmation bias (Livia caught)
 4. ❌ "Local necessity ×2 across all Pillars" — only Pillar 1 needs locale (Livia caught)
 5. ❌ Reducing digest to "3 frontier vocabulary words a week" — patronizing (Livia caught hard)
+6. ❌ Layer 3 citation tracking via manual `<!-- from: digests/... -->` tags — AI-friendly but human-hostile, makes user do the data-cleaning work; corrected to Cowork-mediated auto-detection (Livia caught)
 
 ## Cowork ↔ Claude Code handoff protocol
 

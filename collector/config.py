@@ -35,6 +35,13 @@ class Channel:
         return cls(kind=kind, url=url, handle=handle, extra=extra)
 
 
+# MVP modes per SCOPE.md §14 (v0.3.1).
+# - full        : fetch as normal
+# - echo_only   : do not direct-fetch; rely on Mechanism A3 to surface via echo channel
+# - hitl_adhoc  : paywall / restricted; queue for human input but no weekly notification
+MVP_MODES: frozenset[str] = frozenset({"full", "echo_only", "hitl_adhoc"})
+
+
 @dataclass
 class Source:
     id: str
@@ -47,15 +54,25 @@ class Source:
     signal_density: str | None
     human_required: bool
     notes: str | None
+    mvp_active: bool = True
+    mvp_mode: str = "full"
 
     @property
     def is_supported(self) -> bool:
+        if not self.mvp_active or self.mvp_mode != "full":
+            return False
         if self.human_required:
             return False
         return self.primary.kind in SUPPORTED_KINDS
 
     @property
     def hitl_reason(self) -> str | None:
+        if not self.mvp_active:
+            return "mvp_deferred"
+        if self.mvp_mode == "echo_only":
+            return "mvp_echo_only"
+        if self.mvp_mode == "hitl_adhoc":
+            return "mvp_hitl_adhoc"
         if self.human_required:
             return "paywall_or_human_required"
         if self.primary.kind not in SUPPORTED_KINDS:
@@ -83,6 +100,10 @@ def load_sources(yaml_path: Path) -> list[Source]:
 
         primary, fallbacks = _split_primary_and_fallbacks(all_channels)
 
+        mvp_mode = raw.get("mvp_mode", "full")
+        if mvp_mode not in MVP_MODES:
+            mvp_mode = "full"
+
         out.append(
             Source(
                 id=raw["id"],
@@ -95,6 +116,8 @@ def load_sources(yaml_path: Path) -> list[Source]:
                 signal_density=raw.get("signal_density"),
                 human_required=bool(raw.get("human_required", False)),
                 notes=raw.get("notes"),
+                mvp_active=bool(raw.get("mvp_active", True)),
+                mvp_mode=mvp_mode,
             )
         )
     return out

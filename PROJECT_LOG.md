@@ -7,9 +7,9 @@
 - [x] 2026-05-04 [delivery] Digest 交付管道選哪個？— resolved: GitHub repo markdown (主) + email 連結通知 (輔)
 - [x] 2026-05-04 [visual format] Mermaid vs SVG vs PNG 何時用哪個？— resolved: 規則表已寫入 CLAUDE.md
 - [x] 2026-05-04 [github] Repo 名字 + 帳號歸屬?— resolved: `livia-hsieh/ai-intel-harness`
-- [ ] 2026-05-04 [v1 coverage scope] Collector v1 只支援 `rss` + `scrape` (含 RSS auto-discovery + 通用 article-list 抽取)，~26 個 source 走 HITL queue (twitter 14, youtube 3, paywall 3, interview_aggregation 3, github 1, huggingface 1, substack 1)。問題：哪些 HITL kinds 值得寫專屬 adapter？建議 = 等先跑 4 週，看 Mechanism A3 + 信號密度，再決定哪幾個高 ROI（猜想：twitter 因為個人 influencer 集中、substack 因為 newsletter 主流，可能優先；youtube 短期不值得做）。
-- [ ] 2026-05-04 [broken feeds] Anthropic research RSS + Google DeepMind RSS 都返回 invalid XML token (smoke test 直接看到)。是 source 端問題還是我們抓法的問題？要不要寫 fallback (HTML scrape) 還是降權？
-- [ ] 2026-05-04 [over-fetch] OpenAI blog 一次抓進 929 篇 (整個歷史 archive)。短期沒影響（dedup 會處理），但 Task #4 的 Haiku triage 需要日期過濾，否則每週 review 1000+ 件爆 cost。架構問題：日期過濾應該在 collector 層 (省 storage) 還是 triage 層 (省邏輯)？我建議 triage 層，理由是 collector 應該保持 "wide scan" 純粹性，dedup 配合就夠了。
+- [x] 2026-05-04 [v1 coverage scope] HITL kinds 哪些寫 adapter — resolved: 等 4 週數據,但**現在就埋 metrics**(`collected_count`, `haiku_pass_rate`, `digest_inclusion_rate`, `livia_engagement_score`,signal_yield = digest_inclusion × engagement)。決策規則:>0.5 寫 adapter,0.2~0.5 觀察,<0.2 降權,0 移除。預測:substack/github/huggingface 是 config 問題(都有 RSS),paywall/interview_aggregation 永遠 HITL by design,youtube 短期 HITL 撐住,twitter(14 個 influencer)是 4 週後唯一真正要評估的 adapter 投資對象。
+- [x] 2026-05-04 [broken feeds] Anthropic / DeepMind RSS — resolved: 不降權(這兩個是 backbone source,transport 問題不該懲罰 content 價值)。先試替代 endpoint(Anthropic: `/news/rss.xml`, `/index.xml`, `/feed`, sitemap;DeepMind: `/api/v1/feed/blog`, 舊 deepmind.com domain, sitemap)。若全死,寫 HTML scrape fallback **加 `scaffolding_note` metadata** 標明「RSS 恢復就拆」+ meta-loop 每季 probe RSS endpoints。這個 scaffolding 管理 pattern 是 portfolio 設計筆記金礦。
+- [x] 2026-05-04 [over-fetch] OpenAI 929 篇 — resolved: **不採用 Livia 提案,date filter 放 collector 層而非 triage**。理由:(1) Date 是 metadata 不是 content,單一職責;(2) Triage 929 篇 Haiku ~$0.19 純浪費;(3) Triage prompt 不該被 date 邏輯污染。架構:Collector 對每個 source 維護 `SourceCursor(last_successful_pub_date)`,cold start 抓 30 天,steady state 增量。「Wide scan」是 source 廣度不是時間廣度——這個觀念釐清值得寫進 SCOPE.md changelog。Backfill 若需要做獨立 one-shot script,不混進 weekly run。
 
 ---
 
@@ -42,6 +42,12 @@ A bi-weekly automated digest of frontier AI / agent engineering / software engin
 | 2026-05-04 | Delivery: **markdown in `digests/YYYY-WNN.md`** (primary) + **short email with link only** (notification) | Repo digests double as portfolio artifacts; email is push-to-phone trigger, content stays on GitHub for accumulation + visibility. |
 | 2026-05-04 | Visual format rule table written into CLAUDE.md | Mermaid default for ≤10-node standard diagrams; SVG for hero visuals / quadrants / matrices; PNG for quantitative charts; explicit decision rule for synthesizer. The rule itself is a portfolio design note. |
 | 2026-05-04 | Private source dump: **deferred** — use sources.yaml v0.1, grow via Mechanism A3 + manual additions later | Not worth blocking Task #3 on; collector should be source-agnostic anyway. |
+| 2026-05-04 | HITL adapter eval: **measure signal_yield over 4 weeks before investing** | Per-source metrics埋進 collector + triage (`signal_yield = digest_inclusion_rate × livia_engagement_score`). Decision rule: >0.5 build adapter / 0.2~0.5 watch / <0.2 demote / 0 remove. Twitter (14 influencers) likely the only real adapter investment question; substack/github/huggingface are RSS config fixes. |
+| 2026-05-04 | Broken RSS feeds: **scrape fallback with `scaffolding_note` metadata, never demote backbone sources** | Anthropic/DeepMind are Pillar 3/4 backbone; transport problems don't justify content devaluation. Try alternative RSS endpoints first; if all dead, scrape fallback marked as removable scaffolding. Meta-loop probes RSS endpoints quarterly for restoration. |
+| 2026-05-04 | Date filtering: **collector layer (incremental cursor), NOT triage** | Reverses Livia's initial proposal. Reasons: (1) date is metadata not content - single responsibility; (2) triage cost on 929 items is $0.19 wasted; (3) triage prompt purity. "Wide scan" means source breadth, not temporal breadth. Cold-start: last 30 days. Steady state: items newer than `SourceCursor.last_successful_pub_date`. |
+| 2026-05-04 | MVP free-only mode, paid sources deferred | Phase 1 proves value with $0 source cost. Paywall = HITL ad-hoc only; Twitter API = deferred. Individual influencers reach via echo channel (1-2 week lag through Latent Space / Interconnects / Import AI / The Batch / arXiv citations). 4-week eval triggers Twitter API consideration only if echo coverage < 70% AND specific influencer signal_yield > 0.5. |
+| 2026-05-04 | Engagement mechanism: **3-layer (inline checkbox / Cowork review / downstream citation)** | Closes the previously hand-waved `livia_engagement_score` loop. Layer 1 (passive, git-tracked): per-briefing ✅/⚠️/❌ checkbox in markdown. Layer 2 (active, qualitative): weekly 5-10min Cowork review writing to `engagement_log.md`. Layer 3 (passive, strongest signal): grep wiki + project folder for `<!-- from: digests/... -->` source tags to count downstream citations. signal_yield = digest_inclusion × checkbox_score × (1 + citation_bonus). Written into SCOPE §13. |
+| 2026-05-04 | Layer 3 redesign: **Cowork AI-mediated, zero consumer burden** | Initial Layer 3 required Livia to manually tag `<!-- from: digests/... -->` — she rejected as friction-heavy + not user-friendly. Redesigned: (1) Cowork passively detects digest references in conversation and logs silently; (2) monthly Cowork-led recall check ("which items did you actually use?"); (3) wiki backlink auto-propose when editing wiki via Cowork. Consumer-side action: zero. Tag maintenance burden moved entirely to Claude. This is the harness eng principle "scaffolding should serve humans, not the other way around" applied. |
 
 ---
 
@@ -92,7 +98,7 @@ A bi-weekly automated digest of frontier AI / agent engineering / software engin
 |---|---|---|---|
 | 1 | Define scope of pipeline | completed | SCOPE.md v0.2 |
 | 2 | Build source registry + channel fallbacks | completed | sources.yaml v0.1 (185 sources) |
-| 3 | Implement collector + dedup (harness principles) | completed | Session 4. RSS + scrape + HITL queue + SQLite dedup, smoke-tested. |
+| 3 | Implement collector + dedup (harness principles) | completed | Sessions 4–5. RSS + scrape + HITL + SQLite dedup + cursor incremental + RSS alt-endpoint + scaffolding_note + MVP routing per SCOPE v0.3.1. |
 | 4 | Implement synthesizer (LLM clustering + vocab surfacing) | pending | Next session |
 | 5 | Implement delivery + first end-to-end run | pending | |
 | 6 | Build meta-loop (self-correcting sources + prompt) | pending | The most harness-flavored phase |
@@ -103,6 +109,40 @@ Status values: `pending` / `in_progress` / `completed` / `blocked`.
 ---
 
 ## Session log
+
+### Session 5 — 2026-05-04 — Collector retrofit per SCOPE v0.3.1 (Task #3 v0.2)
+
+**What we did:**
+- Retrofitted collector to honor SCOPE v0.3.1 decisions made in Cowork between Sessions 4 and 5.
+- **`source_cursor` table** + `get_cursor` / `update_cursor` API on Storage. Cold-start = now − 30 days; steady state = `last_successful_pub_date`. Items older than cursor are filtered before insert. Smoke test: filtered 957 items (mostly OpenAI archive) — first concrete proof that "wide scan = source breadth, not temporal breadth."
+- **Idempotent migrations** in `Storage._migrate()` via `PRAGMA table_info()` — added `items.scaffolding_note`, `fetch_log.used_channel`, `fetch_log.tried_endpoints` to existing v0.1 DB without dropping data. Survives v0.x → v0.x upgrades cleanly.
+- **RSS alternative endpoints** in `fetchers/rss.py`. New `fetch_rss_with_metadata` returns `FetchAttempt(items, used_endpoint, tried_endpoints)`. Tries 9 common alt paths (`/rss`, `/feed`, `/feed.xml`, `/atom.xml`, `/index.xml`, `/news/rss.xml`, `/blog/rss.xml`, etc) on the same host before giving up. Smoke test: `google-deepmind` RSS now succeeds via `/blog/rss.xml` instead of declared `/discover/blog/rss.xml`.
+- **Scrape-as-RSS-fallback** with `scaffolding_note` in orchestrator. When all RSS endpoints for a host die, the orchestrator falls through to scrape on the host page and tags every yielded item with `scaffolding_note: rss_unrecovered_<host>`. Smoke test: 19 Anthropic research items now ingested via scrape fallback, all tagged for the meta-loop to re-probe quarterly.
+- **MVP routing** via `mvp_active` / `mvp_mode` fields on Source. Three modes: `full`, `echo_only`, `hitl_adhoc`. Tagged 14 individual influencers (twitter primary) as `echo_only` and 3 paywall sources (`stratechery`, `the-information-ai`, `liang-wenfeng`) as `hitl_adhoc`. They route to HITL queue with mode-specific reasons; collector skips fetch.
+- **`tried_endpoints` logging** in `fetch_log` so the meta-loop can see which alt endpoints were probed.
+
+**Tasks completed this session:**
+- ✅ Task #3 v0.2: Collector retrofit complete. All four SCOPE v0.3.1 decisions implemented and smoke-tested.
+
+**Smoke test results (re-run of first 5 sources, post-retrofit):**
+- 5 ok, 0 errors (was 3 ok / 2 errors yesterday)
+- 25 new items, 957 filtered by cursor (vs 1028 ingested wholesale yesterday)
+- 19 items tagged `rss_unrecovered_www.anthropic.com`
+- 5 source cursors written
+- HITL queue: 1 (yesterday's `liang-wenfeng` test) + new MVP routings on next full run
+
+**What's NOT done (deferred to Task #4 by design):**
+- Signal yield columns on items (`haiku_pass`, `digest_inclusion`, `engagement_score`) — no data to fill until triage exists. Storage migration will add them when Task #4 needs them.
+- Engagement log file format / inline checkbox — Task #5 (delivery) concern.
+- Echo channel A3 self-discovery — Task #6 (meta-loop).
+- Per-source `signal_yield` aggregate function — needs at least 4 weeks of triage + checkbox data first.
+
+**Anti-patterns NOT introduced (extending Session 4 list):**
+5. ❌ Did not pre-build signal_yield columns — those need data from Task #4/5; ALTER TABLE later
+6. ❌ Did not write per-host RSS endpoint maps (e.g. "for anthropic.com try this specific list") — generic alt-path list works for both Anthropic and DeepMind in the smoke test; per-host overrides only when a real source forces it
+7. ❌ Did not delete the v0.1 DB to migrate — `PRAGMA table_info` + ALTER TABLE keeps history intact, which is the correct pattern for any portfolio repo where someone might pull at a v0.1 commit and test-run
+
+---
 
 ### Session 4 — 2026-05-04 — Collector + dedup (Task #3)
 

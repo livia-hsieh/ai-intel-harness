@@ -258,6 +258,7 @@ sources:
     geo: us
     signal_density: medium
 
+    mvp_mode: echo_only
   - id: mustafa-suleyman
     name: Mustafa Suleyman (Microsoft AI)
     pillar_tags: [2, 3]
@@ -266,6 +267,7 @@ sources:
     geo: us
     signal_density: medium
 
+    mvp_mode: echo_only
   - id: mira-murati
     name: Mira Murati (Thinking Machines Lab)
     pillar_tags: [3]
@@ -274,6 +276,7 @@ sources:
     geo: us
     signal_density: high
 
+    mvp_mode: echo_only
   - id: arthur-mensch
     name: Arthur Mensch (Mistral)
     pillar_tags: [3]
@@ -282,6 +285,7 @@ sources:
     geo: europe
     signal_density: medium
 
+    mvp_mode: echo_only
   - id: liang-wenfeng
     name: Liang Wenfeng 梁文鋒 (DeepSeek)
     pillar_tags: [3]
@@ -296,6 +300,7 @@ sources:
   # 🌟 TOP RESEARCHERS — Individual influencers
   # ===========================================================================
 
+    mvp_mode: hitl_adhoc
   - id: andrej-karpathy
     name: Andrej Karpathy 卡帕西
     pillar_tags: [3, 4]
@@ -319,6 +324,7 @@ sources:
     geo: us
     signal_density: high
 
+    mvp_mode: echo_only
   - id: geoffrey-hinton
     name: Geoffrey Hinton
     pillar_tags: [2, 3]
@@ -347,6 +353,7 @@ sources:
     geo: us
     signal_density: medium
 
+    mvp_mode: echo_only
   - id: lilian-weng
     name: Lilian Weng (Thinking Machines Lab, ex-OpenAI)
     pillar_tags: [3, 4]
@@ -364,6 +371,7 @@ sources:
     geo: us
     signal_density: medium
 
+    mvp_mode: echo_only
   - id: greg-brockman
     name: Greg Brockman (OpenAI)
     pillar_tags: [3, 4]
@@ -372,6 +380,7 @@ sources:
     geo: us
     signal_density: medium
 
+    mvp_mode: echo_only
   - id: jeff-dean
     name: Jeff Dean (Google DeepMind)
     pillar_tags: [3, 4]
@@ -380,6 +389,7 @@ sources:
     geo: us
     signal_density: medium
 
+    mvp_mode: echo_only
   - id: sholto-douglas
     name: Sholto Douglas (Anthropic)
     pillar_tags: [3, 4]
@@ -388,6 +398,7 @@ sources:
     geo: us
     signal_density: high
 
+    mvp_mode: echo_only
   - id: trenton-bricken
     name: Trenton Bricken (Anthropic interpretability)
     pillar_tags: [3]
@@ -396,6 +407,7 @@ sources:
     geo: us
     signal_density: high
 
+    mvp_mode: echo_only
   - id: yoshua-bengio
     name: Yoshua Bengio (Mila)
     pillar_tags: [3]
@@ -479,6 +491,7 @@ sources:
     geo: us
     signal_density: high
 
+    mvp_mode: echo_only
   - id: jeremy-howard
     name: Jeremy Howard (fast.ai, Answer.AI)
     pillar_tags: [4]
@@ -1251,6 +1264,7 @@ sources:
     geo: us
     signal_density: medium
 
+    mvp_mode: echo_only
   - id: sequoia-capital
     name: Sequoia Capital Perspectives
     pillar_tags: [2]
@@ -1306,6 +1320,7 @@ sources:
     human_required: true
     paywall: true
 
+    mvp_mode: hitl_adhoc
   - id: decoder-podcast
     name: Decoder (Nilay Patel)
     pillar_tags: [2]
@@ -1340,6 +1355,7 @@ sources:
     human_required: true
     paywall: true
 
+    mvp_mode: hitl_adhoc
   - id: spyglass-mg-siegler
     name: Spyglass (M.G. Siegler)
     pillar_tags: [2]
@@ -1406,6 +1422,7 @@ sources:
     signal_density: medium
     notes: AI 政策 angle
 
+    mvp_mode: echo_only
   - id: lisa-su-amd
     name: Lisa Su 蘇姿丰 (AMD CEO)
     pillar_tags: [1, 2, 3]
