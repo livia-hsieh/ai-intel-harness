@@ -42,36 +42,55 @@ TriggerFn = Callable[[dict[str, Any]], Optional[Trigger]]
 # =============================================================================
 
 def collector_uncollected_sources(state: dict) -> Trigger | None:
-    """Sources declared in sources.yaml but never collected (no items in DB).
+    """Sources declared in sources.yaml but never SUCCESSFULLY collected.
 
-    Catches the silent failure surfaced in Session 7: yaml had 185 sources
-    but only 5 had ever been hit because all smoke tests used --limit-sources.
-    Without this trigger, "we have 1073 items" felt like good coverage when
-    really it was 5/185 sources × heavy concentration in OpenAI archive.
+    Three sub-states distinguished (only the first fires this trigger as a real gap):
+
+    1. **never-attempted-with-supported-kind**: declared, mvp_active, primary
+       kind we can fetch (rss/scrape/blog) — but no fetch_log entry exists.
+       This is the actual coverage gap the trigger is for.
+
+    2. attempted-but-empty: fetch_log shows status=ok, items=0 — the source
+       is active but had no new items in the lookback window. NOT a gap;
+       low-cadence sources legitimately produce 0 items some weeks.
+
+    3. unsupported-kind: declared, mvp_active, but primary kind is
+       youtube/github/substack/etc which the orchestrator can't natively
+       fetch. Routed to HITL by design. Tracked separately.
+
+    Earlier version conflated all three and over-fired.
     """
     declared = state.get("collector_declared_sources", set())
+    declared_supported = state.get("collector_declared_supported_sources", set())
+    if declared_supported is None:
+        declared_supported = declared  # backwards-compat if state lacks this
+    attempted = state.get("collector_attempted_sources", set())
     collected = set(state.get("collector_per_source", {}).keys())
-    if not declared:
+
+    if not declared_supported:
         return None
-    uncollected = sorted(declared - collected)
-    if not uncollected:
+
+    # The real gap: declared, supported, but never even appeared in fetch_log.
+    never_attempted = sorted(declared_supported - attempted - collected)
+    if not never_attempted:
         return None
-    pct_missing = len(uncollected) / len(declared)
-    sample = ", ".join(uncollected[:8])
-    if len(uncollected) > 8:
-        sample += f", ... ({len(uncollected) - 8} more)"
+
+    pct_missing = len(never_attempted) / len(declared_supported)
+    sample = ", ".join(never_attempted[:8])
+    if len(never_attempted) > 8:
+        sample += f", ... ({len(never_attempted) - 8} more)"
     return Trigger(
         severity=RED if pct_missing > 0.5 else YELLOW,
         layer="collector",
-        title=f"{len(uncollected)} of {len(declared)} declared sources have never been collected",
+        title=f"{len(never_attempted)} of {len(declared_supported)} supported sources never attempted",
         detail=(
-            f"{pct_missing:.0%} of sources.yaml entries have zero items in DB.\n"
+            f"{pct_missing:.0%} of supported sources have no fetch_log entry at all.\n"
             f"Sample: {sample}"
         ),
         fix=(
-            "Run `collect` (no --limit-sources flag) so the orchestrator hits every "
-            "supported source. ~30–45 min, $0 API cost (HTTP only). Backlog of items "
-            "then needs `triage` (~$2 / 1000 items at Haiku rates)."
+            "Run `collect` (no flags) to hit every supported source.\n"
+            "If they're already showing in fetch_log with status=ok / items=0, that's\n"
+            "low-cadence (no new items in last 30 days) — not a gap."
         ),
         reference="Session 7 PROJECT_LOG; collector/run.py orchestrator",
     )

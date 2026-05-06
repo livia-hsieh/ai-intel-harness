@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>賣法 Playbook</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -115,38 +116,39 @@
       background: #f9fafb;
       padding: 0.3rem 0.5rem;
       border-radius: 0.3rem;
-      margin-bottom: 0.4rem;
-    }
-    .outcome-card .scale {
-      font-size: 0.78rem;
-      color: #6b7280;
     }
     .outcome-card .warning {
       font-size: 0.78rem;
       color: #92400e;
       background: #fef3c7;
-      padding: 0.3rem 0.5rem;
+      padding: 0.4rem 0.5rem;
       border-radius: 0.3rem;
-      margin-top: 0.4rem;
+      margin-top: 0.5rem;
       border-left: 3px solid #d97706;
+      line-height: 1.4;
     }
     .group {
       margin-bottom: 1.4rem;
-      padding: 0.8rem 1rem;
+      padding: 0.9rem 1rem;
       background: #fafbfc;
       border-radius: 0.5rem;
       border-left: 4px solid #3b82f6;
     }
+    .group.internal { border-left-color: #6b7280; background: #f9fafb; }
+    .group.partnership { border-left-color: #d97706; background: #fffbeb; }
     .group-header {
       font-weight: 600;
       color: #1e3a8a;
       font-size: 1rem;
       margin-bottom: 0.3rem;
     }
+    .group.internal .group-header { color: #4b5563; }
+    .group.partnership .group-header { color: #92400e; }
     .group-desc {
       font-size: 0.85rem;
       color: #6b7280;
       margin-bottom: 0.7rem;
+      line-height: 1.5;
     }
     table {
       width: 100%;
@@ -161,7 +163,7 @@
       text-align: left;
       vertical-align: top;
     }
-    table th { background: #f3f4f6; font-weight: 600; color: #374151; }
+    table th { background: #f3f4f6; font-weight: 600; color: #374151; font-size: 0.85rem; }
     table tr:hover td { background: #fafbfc; }
     .signal-row {
       display: grid;
@@ -264,6 +266,7 @@
       font-size: 0.86rem;
       color: #374151;
       margin-bottom: 0.4rem;
+      line-height: 1.55;
     }
     .frame-card .concern {
       font-size: 0.8rem;
@@ -285,48 +288,7 @@
       border-radius: 0.4rem;
       font-size: 0.9rem;
       color: #78350f;
-    }
-    .example-row {
-      padding: 0.7rem 0;
-      border-bottom: 1px solid #e5e7eb;
-    }
-    .example-row:last-child { border-bottom: none; }
-    .example-row .client {
-      font-weight: 600;
-      color: #1e3a8a;
-      font-size: 1rem;
-    }
-    .example-row .meta {
-      font-size: 0.85rem;
-      color: #6b7280;
-      margin: 0.3rem 0;
-    }
-    .example-row .meta .tag {
-      display: inline-block;
-      background: #e0e7ff;
-      color: #1e40af;
-      padding: 0.1rem 0.5rem;
-      border-radius: 0.3rem;
-      font-size: 0.75rem;
-      margin-right: 0.3rem;
-    }
-    .example-row .storyline {
-      font-size: 0.9rem;
-      color: #374151;
-      margin-top: 0.3rem;
-    }
-    .example-controls {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-      align-items: center;
-      font-size: 0.9rem;
-    }
-    .example-controls select {
-      padding: 0.4rem 0.6rem;
-      border: 1px solid #d1d5db;
-      border-radius: 0.3rem;
-      font-size: 0.9rem;
+      line-height: 1.6;
     }
     .reset-btn {
       background: #f3f4f6;
@@ -338,6 +300,38 @@
       color: #4b5563;
     }
     .reset-btn:hover { background: #e5e7eb; }
+    .mermaid-container {
+      background: white;
+      padding: 1rem;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .tab-buttons {
+      display: flex;
+      gap: 0.3rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .tab-buttons button {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-bottom: none;
+      padding: 0.55rem 1.2rem;
+      border-radius: 0.4rem 0.4rem 0 0;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #4b5563;
+      transition: all 0.2s;
+    }
+    .tab-buttons button:hover { background: #f9fafb; }
+    .tab-buttons button.active {
+      background: #1d4ed8;
+      color: white;
+      border-color: #1d4ed8;
+      font-weight: 500;
+    }
     @media (max-width: 768px) {
       .signal-row { grid-template-columns: 1fr; }
       main { padding: 1rem; }
@@ -359,17 +353,21 @@
   <script src="config_governance.js"></script>
   <script src="config_at_scale.js"></script>
   <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
     let currentTab = 'gov';
     let signalState = {};
+    let decisionViewMode = 'interactive'; // 'interactive' or 'flat'
     const configs = { gov: govConfig, as: scaleConfig };
 
     function activeConfig() { return configs[currentTab]; }
 
     function frameById(id) {
+      if (!id) return null;
       return activeConfig().frames.find(f => f.id === id);
     }
 
-    function clientForOutcomeId(id) {
+    function outcomeById(id) {
       return activeConfig().outcomes.find(o => o.id === id);
     }
 
@@ -383,10 +381,18 @@
         ${renderDecisionTree(c)}
         ${renderFrames(c)}
         ${renderSophistication(c)}
-        ${renderExamples(c)}
         ${renderDrillDown(c)}
       `;
       attachInteractions();
+      // render mermaid 圖
+      if (decisionViewMode === 'flat' && c.decision_tree && c.decision_tree.flat_mermaid) {
+        const el = document.getElementById('mermaid-flat');
+        if (el) {
+          mermaid.render('mermaid-svg-' + Date.now(), c.decision_tree.flat_mermaid).then(({ svg }) => {
+            el.innerHTML = svg;
+          });
+        }
+      }
     }
 
     function renderHero(c) {
@@ -405,9 +411,7 @@
           <div class="id">${o.id}${o.maturity_label ? ' · ' + o.maturity_label : ''}</div>
           <div class="name">${o.name}</div>
           ${o.client_state ? `<div class="state">${o.client_state}</div>` : ''}
-          ${o.sub_label ? `<div class="state">${o.sub_label}</div>` : ''}
           <div class="modules">${o.key_modules}</div>
-          <div class="scale">${o.scale}</div>
           ${o.warning ? `<div class="warning">⚠️ ${o.warning}</div>` : ''}
         </div>
       `).join('');
@@ -421,30 +425,31 @@
 
     function renderEntryPaths(c) {
       const groups = c.entry_paths.map(g => {
+        const groupClass = g.group_id === 'A' ? 'internal' : (g.group_id === 'D' ? 'partnership' : '');
         const rows = g.paths.map(p => {
           const frame = frameById(p.frame_id);
           return `
             <tr>
-              <td><strong>${p.name}</strong></td>
-              <td>${p.window}</td>
+              <td><strong>${p.name}</strong>${p.internal_note ? `<br><span style="font-size:0.8rem;color:#6b7280;">${p.internal_note}</span>` : ''}</td>
+              <td>${p.window || '—'}</td>
               <td>${frame ? frame.name : '—'}</td>
+              <td>${p.opening_hook && p.opening_hook !== '—' ? '「' + p.opening_hook + '」' : '—'}</td>
               <td>${p.default_outcome || '—'}</td>
-              <td>「${p.opening_hook}」</td>
             </tr>
           `;
         }).join('');
         return `
-          <div class="group">
+          <div class="group ${groupClass}">
             <div class="group-header">${g.group_id}. ${g.group_name}</div>
             <div class="group-desc">${g.group_desc}</div>
             <table>
               <thead>
                 <tr>
                   <th>進案路徑</th>
-                  <th>主窗口</th>
-                  <th>Frame</th>
-                  <th>默認套餐</th>
-                  <th>開場 hook</th>
+                  <th>客戶窗口</th>
+                  <th>IBM 角色</th>
+                  <th>開場白</th>
+                  <th>可推什麼套餐</th>
                 </tr>
               </thead>
               <tbody>${rows}</tbody>
@@ -454,20 +459,39 @@
       }).join('');
       return `
         <section class="block">
-          <h2>進案路徑（觸發點 + 窗口 → Frame + 開場一條龍）</h2>
+          <h2>進案路徑</h2>
           ${groups}
         </section>
       `;
     }
 
     function renderDecisionTree(c) {
+      if (!c.decision_tree && (!c.decision_signals || c.decision_signals.length === 0)) {
+        return '';
+      }
+      const treeName = c.decision_tree ? c.decision_tree.name : '套餐推薦樹';
+      const treeDesc = c.decision_tree ? c.decision_tree.description : '';
+      const hasFlat = c.decision_tree && c.decision_tree.flat_mermaid;
+
+      return `
+        <section class="block">
+          <h2>${treeName}</h2>
+          ${treeDesc ? `<p style="font-size:0.92rem;color:#4b5563;">${treeDesc}</p>` : ''}
+
+          <div class="tab-buttons">
+            <button class="${decisionViewMode === 'interactive' ? 'active' : ''}" onclick="setDecisionView('interactive')">互動版（點選訊號 → 即時推薦）</button>
+            ${hasFlat ? `<button class="${decisionViewMode === 'flat' ? 'active' : ''}" onclick="setDecisionView('flat')">攤平版（整體決策邏輯一圖）</button>` : ''}
+          </div>
+
+          ${decisionViewMode === 'interactive' ? renderDecisionInteractive(c) : ''}
+          ${decisionViewMode === 'flat' && hasFlat ? `<div id="mermaid-flat" class="mermaid-container">載入中...</div>` : ''}
+        </section>
+      `;
+    }
+
+    function renderDecisionInteractive(c) {
       if (!c.decision_signals || c.decision_signals.length === 0) {
-        return `
-          <section class="block">
-            <h2>決策樹（套餐推薦工具）</h2>
-            <div class="warning-box">此份 config 暫無 decision_signals。</div>
-          </section>
-        `;
+        return '<div class="warning-box">此份 config 暫無訊號定義。</div>';
       }
       const signalRows = c.decision_signals.map(s => {
         const buttons = Object.entries(s.values).map(([level, label]) => `
@@ -486,31 +510,13 @@
           </div>
         `;
       }).join('');
-      const quickBranchHtml = (c.signal_to_outcome && c.signal_to_outcome.quick_branches) ? `
-        <h3>快速分支</h3>
-        <table>
-          <thead><tr><th>條件</th><th>套餐</th><th>備註</th></tr></thead>
-          <tbody>
-            ${c.signal_to_outcome.quick_branches.map(qb => `
-              <tr><td>${qb.condition}</td><td><strong>${qb.outcome}</strong></td><td>${qb.note}</td></tr>
-            `).join('')}
-          </tbody>
-        </table>
-      ` : '';
       return `
-        <section class="block">
-          <h2>決策樹一：用 5 訊號反推套餐（互動）</h2>
-          <p style="font-size:0.9rem;color:#4b5563;margin-bottom:1rem;">
-            ⭐ <strong>不要問客戶自答</strong>——以下 5 個訊號從 IBM 訪談中外部觀察。多數落哪欄就推那個套餐。
-          </p>
-          ${signalRows}
-          <button class="reset-btn" onclick="resetSignals()" style="margin-top:0.5rem;">重設</button>
-          <div id="recommendation" class="recommendation-box empty">
-            <div class="label">推薦套餐</div>
-            <div class="result">（請選擇所有訊號）</div>
-          </div>
-          ${quickBranchHtml}
-        </section>
+        ${signalRows}
+        <button class="reset-btn" onclick="resetSignals()" style="margin-top:0.5rem;">重設</button>
+        <div id="recommendation" class="recommendation-box empty">
+          <div class="label">推薦套餐</div>
+          <div class="result">（請選擇所有訊號）</div>
+        </div>
       `;
     }
 
@@ -525,9 +531,9 @@
       `).join('');
       return `
         <section class="block">
-          <h2>Frame 鋪陳內涵</h2>
+          <h2>IBM 角色（同套餐 IBM 在案子裡可以是不同角色）</h2>
           <p style="font-size:0.9rem;color:#4b5563;margin-bottom:1rem;">
-            重點不是用詞，是<strong>鋪陳的內涵</strong>。同 Frame 同套餐核心故事一樣，跨 Frame 故事完全不同。
+            重點不是用詞，是<strong>鋪陳的內涵</strong>。同 IBM 角色同套餐核心故事一樣，跨角色故事完全不同。
           </p>
           <div class="frame-grid">${cards}</div>
         </section>
@@ -546,7 +552,7 @@
       `).join('');
       return `
         <section class="block">
-          <h2>客戶程度（sophistication）→ 包裝深淺</h2>
+          <h2>客戶程度（包裝深淺）</h2>
           <table>
             <thead><tr><th>程度</th><th>包裝方式</th><th>範例</th><th>判斷訊號</th></tr></thead>
             <tbody>${rows}</tbody>
@@ -555,47 +561,9 @@
       `;
     }
 
-    function renderExamples(c) {
-      if (!c.outcome_examples || c.outcome_examples.length === 0) return '';
-      const opts = c.outcome_examples.map(oe => {
-        const o = clientForOutcomeId(oe.outcome_id);
-        return `<option value="${oe.outcome_id}">${oe.outcome_id} ${o ? o.name : ''}</option>`;
-      }).join('');
-      const firstId = c.outcome_examples[0].outcome_id;
-      return `
-        <section class="block">
-          <h2>同套餐對不同客戶（範例）</h2>
-          <div class="example-controls">
-            <span>選套餐：</span>
-            <select id="example-selector">${opts}</select>
-          </div>
-          <div id="example-rows">${renderExampleRows(c, firstId)}</div>
-        </section>
-      `;
-    }
-
-    function renderExampleRows(c, outcomeId) {
-      const oe = c.outcome_examples.find(x => x.outcome_id === outcomeId);
-      if (!oe) return '';
-      return oe.examples.map(ex => {
-        const frame = frameById(ex.frame_id);
-        return `
-          <div class="example-row">
-            <div class="client">${ex.client}</div>
-            <div class="meta">
-              <span class="tag">嘴上說：${ex.client_says}</span>
-              <span class="tag">Frame：${frame ? frame.name : ex.frame_id}</span>
-              <span class="tag">程度：${ex.sophistication}</span>
-            </div>
-            <div class="storyline">${ex.opening_storyline}</div>
-          </div>
-        `;
-      }).join('');
-    }
-
     function renderDrillDown(c) {
-      if (!c.drill_down_questions) return '';
-      const rows = c.drill_down_questions.map(q => `
+      if (!c.drill_down) return '';
+      const rows = c.drill_down.questions.map(q => `
         <tr>
           <td>${q.question}</td>
           <td style="color:#065f46;">✓ ${q.answerable}</td>
@@ -605,10 +573,7 @@
       return `
         <section class="block">
           <h2>抽絲剝繭問句（GV-D 警告）</h2>
-          <div class="warning-box">
-            純工具買賣（GV-D）對 IBM Consulting <strong>沒大贏面</strong>——沒人月、沒 OM 導入、沒後續案，license 分成是 Software 拿。
-            <strong>GV-D 是 fallback 不是 default</strong>。客戶說「要工具」時應該先抽絲剝繭主動往上推。
-          </div>
+          <div class="warning-box">${c.drill_down.warning}</div>
           <table>
             <thead><tr><th>追問問題</th><th>答得出來 →</th><th>答不出來 →</th></tr></thead>
             <tbody>${rows}</tbody>
@@ -624,27 +589,26 @@
           const signal = btn.dataset.signal;
           const level = btn.dataset.level;
           signalState[signal] = level;
-          // unselect siblings
           btn.parentElement.querySelectorAll('.signal-btn').forEach(b => b.classList.remove('selected'));
           btn.classList.add('selected');
           computeRecommendation();
         });
       });
+    }
 
-      const selector = document.getElementById('example-selector');
-      if (selector) {
-        selector.addEventListener('change', e => {
-          document.getElementById('example-rows').innerHTML = renderExampleRows(activeConfig(), e.target.value);
-        });
-      }
+    function setDecisionView(mode) {
+      decisionViewMode = mode;
+      render();
     }
 
     function resetSignals() {
       signalState = {};
       document.querySelectorAll('.signal-btn.selected').forEach(b => b.classList.remove('selected'));
       const box = document.getElementById('recommendation');
-      box.className = 'recommendation-box empty';
-      box.innerHTML = `<div class="label">推薦套餐</div><div class="result">（請選擇所有訊號）</div>`;
+      if (box) {
+        box.className = 'recommendation-box empty';
+        box.innerHTML = `<div class="label">推薦套餐</div><div class="result">（請選擇所有訊號）</div>`;
+      }
       document.querySelectorAll('.outcome-card.recommended').forEach(c => c.classList.remove('recommended'));
     }
 
@@ -654,8 +618,10 @@
       const values = Object.values(signalState);
       if (values.length < signalsCount) {
         const box = document.getElementById('recommendation');
-        box.className = 'recommendation-box empty';
-        box.innerHTML = `<div class="label">推薦套餐</div><div class="result">（已選 ${values.length}/${signalsCount} 訊號）</div>`;
+        if (box) {
+          box.className = 'recommendation-box empty';
+          box.innerHTML = `<div class="label">推薦套餐</div><div class="result">（已選 ${values.length}/${signalsCount} 訊號）</div>`;
+        }
         return;
       }
       const counts = { low: 0, mid: 0, high: 0 };
@@ -666,16 +632,17 @@
       else if (counts.mid === max) dominantLevel = 'mid';
       else dominantLevel = 'low';
       const outcomeId = c.signal_to_outcome ? c.signal_to_outcome.mappings[dominantLevel] : null;
-      const outcome = outcomeId ? clientForOutcomeId(outcomeId) : null;
+      const outcome = outcomeId ? outcomeById(outcomeId) : null;
 
       const box = document.getElementById('recommendation');
-      box.className = 'recommendation-box';
-      box.innerHTML = `
-        <div class="label">推薦套餐</div>
-        <div class="result">${outcome ? outcome.id + ' ' + outcome.name : '（無對應）'}</div>
-        <div class="breakdown">訊號分布：低成熟=${counts.low} / 中成熟=${counts.mid} / 高成熟=${counts.high}</div>
-      `;
-      // 高亮對應 outcome card
+      if (box) {
+        box.className = 'recommendation-box';
+        box.innerHTML = `
+          <div class="label">推薦套餐</div>
+          <div class="result">${outcome ? outcome.id + ' ' + outcome.name : '（無對應）'}</div>
+          <div class="breakdown">訊號分布：低成熟=${counts.low} / 中成熟=${counts.mid} / 高成熟=${counts.high}</div>
+        `;
+      }
       document.querySelectorAll('.outcome-card.recommended').forEach(c => c.classList.remove('recommended'));
       if (outcome) {
         const card = document.querySelector(`.outcome-card[data-outcome="${outcome.id}"]`);
@@ -689,6 +656,7 @@
       document.getElementById('tab-gov').classList.add('active');
       document.getElementById('tab-as').classList.remove('active');
       signalState = {};
+      decisionViewMode = 'interactive';
       render();
     });
     document.getElementById('tab-as').addEventListener('click', () => {
@@ -696,10 +664,10 @@
       document.getElementById('tab-as').classList.add('active');
       document.getElementById('tab-gov').classList.remove('active');
       signalState = {};
+      decisionViewMode = 'interactive';
       render();
     });
 
-    // 初始 render
     render();
   </script>
 </body>

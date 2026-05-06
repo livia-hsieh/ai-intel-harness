@@ -42,26 +42,43 @@ def assemble_state(
     }
 
     # Load declared source IDs from sources.yaml so we can detect "in yaml but
-    # never collected" (the failure mode caught in Session 7).
+    # never collected" (the failure mode caught in Session 7). Distinguish:
+    # - declared (any active source not deferred / paywall / echo_only)
+    # - declared_supported (subset whose primary kind the collector can fetch)
+    # The difference between these two sets is "active but routed to HITL by
+    # design" — those should NOT trigger the uncollected-sources alert.
+    SUPPORTED_KINDS = frozenset({"rss", "scrape", "blog", "rss_partial"})
+
+    def _primary_kinds(s: dict) -> list[str]:
+        primary = s.get("primary")
+        if isinstance(primary, list):
+            return [c.get("kind") for c in primary if isinstance(c, dict)]
+        if isinstance(primary, dict):
+            return [primary.get("kind")]
+        return []
+
     if sources_yaml_path and sources_yaml_path.exists():
         try:
             import yaml
             with sources_yaml_path.open() as f:
                 yml = yaml.safe_load(f)
             declared = set()
+            declared_supported = set()
             for s in (yml.get("sources") or []):
-                if isinstance(s, dict) and s.get("id"):
-                    # Only count "supported" sources — paywalled / mvp_deferred ones
-                    # are intentionally not collected, so excluding them keeps the
-                    # uncollected-sources trigger from false-positive on those.
-                    if s.get("human_required"):
-                        continue
-                    if s.get("mvp_active") is False:
-                        continue
-                    if s.get("mvp_mode", "full") != "full":
-                        continue
-                    declared.add(s["id"])
+                if not isinstance(s, dict) or not s.get("id"):
+                    continue
+                if s.get("human_required"):
+                    continue
+                if s.get("mvp_active") is False:
+                    continue
+                if s.get("mvp_mode", "full") != "full":
+                    continue
+                sid = s["id"]
+                declared.add(sid)
+                if any(k in SUPPORTED_KINDS for k in _primary_kinds(s)):
+                    declared_supported.add(sid)
             state["collector_declared_sources"] = declared
+            state["collector_declared_supported_sources"] = declared_supported
         except Exception as e:  # noqa: BLE001
             log.warning("failed to read sources.yaml for declared-sources check: %s", e)
 
@@ -103,6 +120,13 @@ def assemble_state(
                 "last_fetched_at_days_ago": days_ago,
             }
         state["collector_per_source"] = per_source
+
+        # Distinct source_ids that ever appeared in fetch_log (regardless of
+        # outcome) — used by uncollected-sources trigger to distinguish
+        # "never attempted" from "attempted with status=ok / items=0".
+        state["collector_attempted_sources"] = {
+            row[0] for row in conn.execute("SELECT DISTINCT source_id FROM fetch_log")
+        }
 
         # ---- Triage: distribution + per-Pillar high-signal counts ----
         bucket_counts = {"high": 0, "watch": 0, "skip": 0, "untriaged": 0}

@@ -332,18 +332,34 @@ Livia 要求：可視化 + 互動 + 保留修改彈性 + raw data 可 config 不
 
 → 落檔 `view/` 子資料夾：
 - `index.html`：template + JS + CSS（一次寫好不動）
-- `config_governance.js`：AI Governance 全部資料（v1.6 內容）
-- `config_at_scale.js`：AI at Scale 資料（v1.0 內容）
+- `config_governance.js`：AI Governance 全部資料
+- `config_at_scale.js`：AI at Scale 資料（v1.0，待對齊）
 - `README.md`：使用指南 + 怎麼改 config
-
-互動功能：
-- Tab 切換 Governance / AI at Scale
-- 決策樹一：5 訊號互動點選 → 即時推薦套餐 + 對應卡片高亮
-- 範例對照：dropdown 切套餐看不同客戶範例
 
 設計理念：**raw data 在 config，展示在 HTML**——以後改內容只改 config，不燒 token 改 HTML。
 
-⚠️ AI at Scale config 還沒對齊 governance v1.6 精修程度（決策樹反向設計、Frame 內涵化、客戶程度維度）——後續若要對齊需重做 config_at_scale.js
+### Session 2 末段：governance config v1.6 → v2.0（白話化 + 結構大改）
+
+Livia 給多項修正：
+1. **用語白話化**：fallback / default 等英文術語砍掉
+2. **outcomes 砍 scale 欄位**（Claude 自己幻覺生的人月與時間）
+3. **進案路徑大改**：
+   - A 組改成「IBM 內部賦能」（無窗口、無角色）
+   - 原 A2/A3「IBM AI 專案結合」移到 B 組「客戶端需求」
+   - 三朵雲獨立成 D 組 Partnership（不是客戶路徑）
+4. **進案路徑表簡化 5 欄**：路徑/窗口/角色/開場白/推什麼套餐
+5. **Frame → 「IBM 角色」**（中文一眼懂）
+6. **「決策樹一」→ 「套餐推薦樹」**（只一棵就直接命名）
+7. **加攤平版**：mermaid flowchart 一圖看完整體決策邏輯
+8. **砍同套餐對不同客戶範例**（待 Livia 看攤平版自己腦中驗）
+
+v2.0 互動 view：
+- Outcomes 不顯 scale
+- 進案路徑表 5 欄（含 A 組「IBM 內部用，不對外賣」標示）
+- 套餐推薦樹有兩個 tab：互動版（5 訊號點選）+ 攤平版（mermaid 視覺化）
+- 警告文字白話化
+
+⚠️ **重要學習**：「白話化是長官友善的關鍵——英文術語、冗餘代稱（5 訊號、決策樹一）都該砍」
 
 ### 下次 session 開頭該讀
 

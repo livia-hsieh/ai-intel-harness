@@ -1,12 +1,11 @@
-// AI Governance 賣法 config - 改這裡的字串就能更新展示，不用動 index.html
-// 來源：SALES_AI_GOVERNANCE.md v1.6
+// AI Governance 賣法 config - 改這裡的字串就能更新展示
 
 const govConfig = {
   meta: {
     title: "AI Governance 賣法",
-    version: "v1.6",
+    version: "v2.0",
     core_one_liner: "治理本身不直接賺錢——所以賣治理 = 找剛性需求附身。",
-    summary: "7 條進案路徑 → Frame 與套餐獨立決定：客戶嘴上說的決定 Frame（怎麼包裝），治理成熟度決定套餐（實際範圍）。",
+    summary: "進案路徑 → IBM 角色 + 套餐推薦樹獨立決定 → 依客戶程度調整包裝深淺。",
   },
 
   // ====== 5 種可賣套餐 ======
@@ -18,8 +17,7 @@ const govConfig = {
       maturity_label: "高成熟",
       client_state: "已有完整 AI 內規、已實施",
       key_modules: "M3 機制補強 + M5 工具升級",
-      scale: "50-150 人月 / 3-9 個月",
-      anchors: [], // 待 Livia 補
+      anchors: [],
     },
     {
       id: "GV-B",
@@ -28,7 +26,6 @@ const govConfig = {
       maturity_label: "中成熟",
       client_state: "零散內規寫不好",
       key_modules: "基於 M4 既有內規 + M1-M9",
-      scale: "200-500 人月 / 9-18 個月",
       anchors: [],
     },
     {
@@ -38,7 +35,6 @@ const govConfig = {
       maturity_label: "低成熟",
       client_state: "沒內規從零開始",
       key_modules: "M1-M9 全",
-      scale: "300-800 人月 / 12-24 個月",
       anchors: [],
     },
     {
@@ -48,8 +44,7 @@ const govConfig = {
       maturity_label: "工具型",
       client_state: "真的真的只想買工具（罕見）",
       key_modules: "M5 為主",
-      scale: "50-150 人月 / 3-6 個月",
-      warning: "純工具對 IBM Consulting 沒大贏面——是 fallback 不是 default。客戶說「要工具」時應該抽絲剝繭主動往上推",
+      warning: "純工具買賣 IBM 顧問賺不到顧問費——客戶說「要工具」時應該主動追問，多半其實該升級到 GV-A/B/C",
       anchors: [],
     },
     {
@@ -59,64 +54,40 @@ const govConfig = {
       maturity_label: "單案型",
       client_state: "只想針對某專案表現驗證",
       key_modules: "M8-M9 技術控制項",
-      scale: "30-80 人月 / 1-3 個月",
       warning: "若客戶內規不清 → 等同沒內規 → 回到 GV-B 或 GV-C",
       anchors: [],
     },
   ],
 
-  // ====== 7 條進案路徑（A/B/C 三組） ======
+  // ====== 進案路徑 ======
   entry_paths: [
     {
       group_id: "A",
-      group_name: "與 IBM 既有關係結合",
-      group_desc: "IBM 主動帶。已有 default 套餐，5 訊號用來「判斷是否升級」。",
+      group_name: "IBM 內部賦能",
+      group_desc: "純內部議題：建立方法確保 IBM 顧問用 AI 工具做客戶案的品質。沒有對外窗口、沒對外角色、沒對外開場白。",
       paths: [
         {
           id: "A1",
-          name: "IBM 內部 AI 工具品質保證",
-          window: "CIO / IT 主管",
-          frame_id: "tool_provider",
-          default_outcome: "看 5 訊號",
-          opening_hook: "IBM 顧問用 AI 工具效果未知，所以 IBM 內部都需要治理保證",
-        },
-        {
-          id: "A2",
-          name: "IBM AI 專案結合（要工具）",
-          window: "CIO",
-          frame_id: "tool_provider",
-          default_outcome: "看 5 訊號",
-          opening_hook: "您的 AI 案 / watsonx 順勢加治理",
-        },
-        {
-          id: "A3",
-          name: "IBM AI 專案結合（要藍圖）",
-          window: "CDO / 董事會",
-          frame_id: "operating_model",
-          default_outcome: "看 5 訊號（偏中-低成熟）",
-          opening_hook: "治理是規模化的前提，3 年走完才能跨場景 reuse",
-        },
-        {
-          id: "A4",
-          name: "三朵雲合作",
-          window: "CIO + 雲商",
-          frame_id: "tool_provider",
-          default_outcome: "看 5 訊號",
-          opening_hook: "補雲商不擅長的合規 mapping",
+          name: "IBM 內部專案 AI 工具品質保證",
+          window: "—",
+          frame_id: null,
+          default_outcome: "IBM 內部使用，不對外賣",
+          opening_hook: "—",
+          internal_note: "建立內規與工具品質檢核機制，確保 IBM 顧問用 AI 工具開發給客戶的東西品質有保證",
         },
       ],
     },
     {
       group_id: "B",
-      group_name: "客戶端剛性需求",
-      group_desc: "客戶情境驅動。從 0 用 5 訊號決策樹一跑套餐。",
+      group_name: "客戶端需求",
+      group_desc: "客戶情境驅動。從 0 走套餐推薦樹判斷套餐。",
       paths: [
         {
           id: "B1",
           name: "法規驅動",
           window: "CRO / 法遵長",
           frame_id: "compliance_partner",
-          default_outcome: "看 5 訊號",
+          default_outcome: "走套餐推薦樹",
           opening_hook: "金管會 / EU AI Act / ISO 42001...",
         },
         {
@@ -124,7 +95,7 @@ const govConfig = {
           name: "危機事件後",
           window: "CEO 直線",
           frame_id: "compliance_partner",
-          default_outcome: "補強升級 / 內規重構",
+          default_outcome: "GV-A 補強 / GV-B 內規重構",
           opening_hook: "您看 X 公司上週 AI 出事...",
         },
         {
@@ -132,7 +103,7 @@ const govConfig = {
           name: "M&A 集團整合",
           window: "集團 CEO / CFO",
           frame_id: "group_integrator",
-          default_outcome: "內規重構 / 全套新建",
+          default_outcome: "GV-B 內規重構 / GV-C 全套新建",
           opening_hook: "併購後 12 個 BU 各做各的...",
         },
         {
@@ -140,34 +111,57 @@ const govConfig = {
           name: "認證取證",
           window: "CMO / CEO",
           frame_id: "compliance_partner",
-          default_outcome: "內規重構 / 全套新建",
+          default_outcome: "GV-B 內規重構 / GV-C 全套新建",
           opening_hook: "ISO 42001 是您出海前必拿的...",
+        },
+        {
+          id: "B5",
+          name: "IBM AI 轉型 / 場景案內含治理",
+          window: "依客戶角色（CDO / CIO / CRO）",
+          frame_id: "compliance_partner",
+          default_outcome: "走套餐推薦樹",
+          opening_hook: "您買的 IBM AI 案中有一塊是治理...",
         },
       ],
     },
     {
       group_id: "C",
       group_name: "技術前沿驅動",
-      group_desc: "新技術出現觸發客戶來問怎麼治理。窗口通常是技術主管。",
+      group_desc: "新技術出現觸發客戶問怎麼治理。窗口通常是技術主管。",
       paths: [
         {
           id: "C1",
           name: "新技術觸發（multiagent / Claude Code 等）",
           window: "CTO / CDO / RAI",
-          frame_id: "tool_provider", // 或 operating_model
-          default_outcome: "補強升級 / 一次性檢測",
+          frame_id: "tool_provider",
+          default_outcome: "GV-A 補強 / GV-E 一次性檢測",
           opening_hook: "您要落地 X 新技術，治理還沒跟上...",
+        },
+      ],
+    },
+    {
+      group_id: "D",
+      group_name: "合作夥伴 Partnership（三朵雲）",
+      group_desc: "與雲廠商談合作關係——不是直接客戶路徑，是 IBM 與雲商共同 Go-to-Market。重點談：(1) 與雲商產品/服務整合方式 (2) 雙方利益分配 (3) 共同 GTM。",
+      paths: [
+        {
+          id: "D1",
+          name: "三朵雲合作（AWS / Azure / GCP）",
+          window: "雲商 BD + 雙方 partnership team",
+          frame_id: "tool_provider",
+          default_outcome: "GV-D 工具棧（嵌進雲商產品）",
+          opening_hook: "與您（雲商）的 X 產品 / 服務結合，補強雲商不擅長的合規 mapping",
         },
       ],
     },
   ],
 
-  // ====== Frame 鋪陳內涵 ======
+  // ====== IBM 角色（前 = Frame） ======
   frames: [
     {
       id: "tool_provider",
       name: "工具供應商",
-      core_story: "客戶腦袋簡化版：買工具 + IBM 教用 + 技術移轉 + 客戶的人會用了。**IBM 內部其實導入完整 operating model**——但不在客戶語言中說，客戶最終一樣得到完整治理",
+      core_story: "客戶腦袋簡化版：買工具 + IBM 教用 + 技術移轉，客戶的人就會用了。其實 IBM 內部還是要花時間導入完整方法和 operating model——只是不用客戶聽不懂的話講。客戶最終一樣得到完整治理",
       client_concern: "我買的工具夠用嗎？怎麼整合？我的人能不能上手？",
       is_special: false,
     },
@@ -180,21 +174,21 @@ const govConfig = {
     },
     {
       id: "compliance_partner",
-      name: "法遵伴侶（常態 + 危機加速版）",
-      core_story: "監理機關視角。法規 mapping → 落差 → 控制項 → 三道防線 → 取證 milestone。**速度可調**：常態走慢、危機走快。危機時加上「止血→根因→經驗轉化內規」",
+      name: "法遵伴侶",
+      core_story: "監理機關視角。法規 mapping → 落差 → 控制項 → 三道防線 → 取證 milestone。速度可調：常態走慢、危機走快加上止血→根因→經驗轉化內規",
       client_concern: "常態：我會被罰嗎？認證能拿到嗎？／ 危機：能多快止血？怎麼證明對外處理好了？",
       is_special: false,
     },
     {
       id: "group_integrator",
       name: "集團統合者",
-      core_story: "集團一致性 + 風險集中 + 子公司散→拉齊。**講政治可行性 + 中立第三方**",
+      core_story: "集團一致性 + 風險集中 + 子公司散→拉齊。重點：政治可行性 + 中立第三方",
       client_concern: "子公司會配合嗎？怎麼讓他們不抵抗？",
       is_special: false,
     },
     {
       id: "ai_lab_partner",
-      name: "AI Lab Partner",
+      name: "AI Lab Partner（特殊）",
       core_story: "Frontier-aligned。跟 Anthropic / Palantir 對標。Capability bet。Agent / Ontology / Harness / Evals。研發共創",
       client_concern: "我們是不是站在 frontier？跟同業比領先嗎？",
       is_special: true,
@@ -202,7 +196,31 @@ const govConfig = {
     },
   ],
 
-  // ====== 5 訊號（決策樹一） ======
+  // ====== 套餐推薦樹（即原決策樹一） ======
+  decision_tree: {
+    name: "套餐推薦樹",
+    description: "用客戶側寫從 IBM 訪談中外部觀察的訊號反推——不要問客戶自答，因為客戶常常自己也搞不清楚。",
+    flat_mermaid: `flowchart TD
+    A[客戶來] --> B{客戶嘴上明確說什麼?}
+    B -->|要工具| C{抽絲剝繭追問<br/>有專責角色 / SOP / 委員會嗎?}
+    C -->|都答得出來| D[GV-D 治理工具棧<br/>罕見]
+    C -->|答不出來| H{治理成熟度?}
+    B -->|要單案驗證| F{內規清楚可依循?}
+    F -->|清楚| G[GV-E 一次性技術檢測]
+    F -->|不清楚| H
+    B -->|整體 / 模糊| H
+
+    H -->|高: 已有完整內規<br/>+ RAI office<br/>+ AI 應用多| I[GV-A 補強升級包]
+    H -->|中: 零散內規<br/>+ 散落角色<br/>+ AI 應用中| J[GV-B 內規重構+落地包]
+    H -->|低: 沒內規<br/>+ 沒組織<br/>+ AI 應用少| K[GV-C 全套新建+落地包]
+
+    style D fill:#fef3c7,stroke:#d97706
+    style I fill:#dbeafe,stroke:#1d4ed8
+    style J fill:#dbeafe,stroke:#1d4ed8
+    style K fill:#dbeafe,stroke:#1d4ed8
+    style G fill:#d1fae5,stroke:#059669`,
+  },
+
   decision_signals: [
     {
       id: "ai_app_scope",
@@ -256,51 +274,41 @@ const govConfig = {
     },
   ],
 
-  // ====== 訊號 → 套餐映射規則 ======
   signal_to_outcome: {
-    rule_description: "5 個訊號中多數落哪欄就推那個套餐。打平時按 mid 偏低處理。",
+    rule_description: "5 個訊號中多數落哪欄就推那個套餐。",
     mappings: {
-      low: "GV-C", // 全套新建
-      mid: "GV-B", // 內規重構
-      high: "GV-A", // 補強升級
+      low: "GV-C",
+      mid: "GV-B",
+      high: "GV-A",
     },
-    quick_branches: [
+  },
+
+  // ====== 抽絲剝繭問句（GV-D 警告） ======
+  drill_down: {
+    warning: "純工具買賣 IBM 顧問賺不到顧問費——是備案不是首選方案。客戶說「要工具」時應該主動追問，看是不是其實該升級到完整治理（GV-A/B/C）。",
+    questions: [
       {
-        condition: "客戶嘴上說「我要工具」+ 抽絲剝繭都答得出來",
-        outcome: "GV-D",
-        note: "罕見，等於 GV-A 退化版",
+        question: "工具上線後誰負責讓它跑起來？",
+        answerable: "有專責 / RAI office",
+        unanswerable: "沒人 → 升級 GV-A/B/C",
       },
       {
-        condition: "客戶嘴上說「單案驗證」+ 內規清楚",
-        outcome: "GV-E",
-        note: "若內規不清 → 回 5 訊號決策",
+        question: "您的內規 / SOP 寫了 AI 治理流程嗎？",
+        answerable: "完整 SOP 在執行",
+        unanswerable: "沒 SOP → 升級 GV-A/B/C",
+      },
+      {
+        question: "AI 應用上線決策由誰拍板？",
+        answerable: "有治理委員會",
+        unanswerable: "沒人 → 升級 GV-A/B/C",
+      },
+      {
+        question: "工具監控的指標誰看？看了會做什麼？",
+        answerable: "明確的責任鏈",
+        unanswerable: "沒人看 → 升級 GV-A/B/C",
       },
     ],
   },
-
-  // ====== 抽絲剝繭問句 ======
-  drill_down_questions: [
-    {
-      question: "工具上線後誰負責讓它跑起來？",
-      answerable: "有專責 / RAI office",
-      unanswerable: "沒人 → 升級 GV-A/B/C",
-    },
-    {
-      question: "您的內規 / SOP 寫了 AI 治理流程嗎？",
-      answerable: "完整 SOP 在執行",
-      unanswerable: "沒 SOP → 升級 GV-A/B/C",
-    },
-    {
-      question: "AI 應用上線決策由誰拍板？",
-      answerable: "有治理委員會",
-      unanswerable: "沒人 → 升級 GV-A/B/C",
-    },
-    {
-      question: "工具監控的指標誰看？看了會做什麼？",
-      answerable: "明確的責任鏈",
-      unanswerable: "沒人看 → 升級 GV-A/B/C",
-    },
-  ],
 
   // ====== 客戶程度（包裝深淺） ======
   sophistication_levels: [
@@ -313,54 +321,17 @@ const govConfig = {
     },
     {
       id: "mid",
-      label: "中(需要橋接)",
+      label: "中（需要橋接）",
       packaging: "用比喻 + 簡化術語",
       example: "治理是您 AI 工廠的鋼筋，3 年讓多個 BU 在同一張藍圖上跑",
       detection: "聽得懂 frontier 詞彙但不主動用",
     },
     {
       id: "low",
-      label: "低(要 educate)",
+      label: "低（要 educate）",
       packaging: "從基礎觀念講起 + step-by-step + 案例",
       example: "您聽過 ChatGPT 嗎？AI 治理是讓您的 ChatGPT 不出錯的整套機制",
       detection: "完全沒聽過 frontier 詞彙 / 把 GenAI 等同 Chatbot",
-    },
-  ],
-
-  // ====== 同套餐對不同客戶範例 ======
-  outcome_examples: [
-    {
-      outcome_id: "GV-C",
-      examples: [
-        {
-          client: "玉山",
-          client_says: "金管會檢查",
-          frame_id: "compliance_partner",
-          sophistication: "mid",
-          opening_storyline: "「金管會 AI 治理檢查週期...」+ 法規 mapping → 三道防線 → 取證 milestone",
-        },
-        {
-          client: "YAGEO",
-          client_says: "集團要統一",
-          frame_id: "group_integrator",
-          sophistication: "mid",
-          opening_storyline: "「併購後 12 個 BU 各做各的...」+ 集團一致性 → 子公司拉齊",
-        },
-        {
-          client: "大型製造業",
-          client_says: "我要藍圖",
-          frame_id: "operating_model",
-          sophistication: "mid_high",
-          opening_storyline: "「3 年讓您的 AI 工廠跑起來」+ Operating Model 全景 + roadmap",
-        },
-        {
-          client: "中型銀行",
-          client_says: "我要工具",
-          frame_id: "tool_provider",
-          sophistication: "low",
-          opening_storyline: "「您的 watsonx 順勢加治理」+ 買工具 + IBM 教用 + 技術移轉（用比喻）。IBM 內部仍跑完整 M1-M9",
-        },
-      ],
     },
   ],
 };
