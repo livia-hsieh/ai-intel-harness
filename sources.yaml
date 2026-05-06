@@ -1801,6 +1801,136 @@ sources:
     signal_density: very_high
     notes: Jensen keynote + technical sessions; Pillar 1+2+3 cross-cutting
 
+  # ===========================================================================
+  # 📰 Medium-platform technical blogs (added Session 7 — gap caught by Livia)
+  # ===========================================================================
+
+  - id: towards-data-science
+    name: Towards Data Science
+    pillar_tags: [3, 4]
+    type: newsletter
+    primary: { kind: rss, url: https://towardsdatascience.com/feed }
+    geo: us
+    signal_density: medium
+    notes: Medium's largest AI/ML publication. Mixed quality but high volume; triage filter does the work.
+
+  - id: the-sequence
+    name: The Sequence (Jesus Rodriguez)
+    pillar_tags: [3, 4]
+    type: newsletter
+    primary: { kind: rss, url: https://thesequence.substack.com/feed }
+    geo: us
+    signal_density: high
+    notes: Daily AI research / framework newsletter; deep technical coverage of frontier papers + tool ecosystem.
+
+  - id: netflix-techblog
+    name: Netflix Tech Blog
+    pillar_tags: [4]
+    type: enterprise_engineering_blog
+    primary: { kind: rss, url: https://netflixtechblog.com/feed }
+    geo: us
+    signal_density: high
+    notes: Production ML / personalization architecture at scale; classic harness eng reference.
+
+  # ===========================================================================
+  # 🛠️ Pillar 4 — Tool / framework vendor blogs (gap caught Session 7)
+  # ===========================================================================
+
+  - id: langchain-blog
+    name: LangChain Blog
+    pillar_tags: [4]
+    type: vendor_blog
+    primary: { kind: rss, url: https://blog.langchain.dev/rss/ }
+    fallback: [{ kind: scrape, url: https://blog.langchain.dev/ }]
+    geo: us
+    signal_density: high
+    notes: Most-referenced agent framework. Patterns + LangSmith updates.
+
+  - id: llamaindex-blog
+    name: LlamaIndex Blog
+    pillar_tags: [4]
+    type: vendor_blog
+    primary: { kind: scrape, url: https://www.llamaindex.ai/blog }
+    geo: us
+    signal_density: high
+    notes: RAG-centric framework; complement to LangChain coverage.
+
+  - id: weights-and-biases
+    name: Weights & Biases (Fully Connected)
+    pillar_tags: [4]
+    type: vendor_blog
+    primary: { kind: rss, url: https://wandb.ai/fully-connected/rss.xml }
+    fallback: [{ kind: scrape, url: https://wandb.ai/fully-connected }]
+    geo: us
+    signal_density: medium
+    notes: ML observability / eval tooling; good production-ML reference content.
+
+  - id: huggingface-blog
+    name: Hugging Face Blog
+    pillar_tags: [3, 4]
+    type: vendor_blog
+    primary: { kind: rss, url: https://huggingface.co/blog/feed.xml }
+    fallback: [{ kind: scrape, url: https://huggingface.co/blog }]
+    geo: us
+    signal_density: high
+    notes: Distinct from huggingface-daily-papers — this is editorial / how-to content.
+
+  # ===========================================================================
+  # ☁️ Pillar 1+4 — IBM-competing AI cloud platforms (gap caught Session 7)
+  # ===========================================================================
+
+  - id: databricks-mosaic
+    name: Databricks (Mosaic AI)
+    pillar_tags: [1, 4]
+    type: vendor_blog
+    primary: { kind: rss, url: https://www.databricks.com/blog/feed }
+    fallback: [{ kind: scrape, url: https://www.databricks.com/blog/category/generative-ai }]
+    geo: us
+    signal_density: high
+    notes: Direct competitor on enterprise AI platform pitches; critical competitive intel for IBM sales.
+
+  - id: snowflake-cortex
+    name: Snowflake (Cortex AI)
+    pillar_tags: [1, 4]
+    type: vendor_blog
+    primary: { kind: rss, url: https://www.snowflake.com/blog/feed/ }
+    fallback: [{ kind: scrape, url: "https://www.snowflake.com/blog/?cat=ai-data-science" }]
+    geo: us
+    signal_density: high
+    notes: Same competitive role as Databricks — Cortex pitch lands directly against IBM AI offerings.
+
+  # ===========================================================================
+  # 🎓 Pillar 5 — Academic + thought leadership (gap caught Session 7)
+  # ===========================================================================
+
+  - id: bair-berkeley
+    name: Berkeley AI Research (BAIR) Blog
+    pillar_tags: [3, 5]
+    type: frontier_lab_blog
+    primary: { kind: rss, url: https://bair.berkeley.edu/blog/feed.xml }
+    fallback: [{ kind: scrape, url: https://bair.berkeley.edu/blog/ }]
+    geo: us
+    signal_density: high
+    notes: Berkeley AI school positions; complements Stanford HAI on academic Pillar 5.
+
+  - id: one-useful-thing
+    name: One Useful Thing (Ethan Mollick)
+    pillar_tags: [2, 4, 5]
+    type: newsletter
+    primary: { kind: rss, url: https://www.oneusefulthing.org/feed }
+    geo: us
+    signal_density: very_high
+    notes: Wharton professor's AI-in-practice newsletter; one of the most-cited applied-AI voices in 2025–2026.
+
+  - id: lex-fridman
+    name: Lex Fridman Podcast
+    pillar_tags: [3, 5]
+    type: podcast
+    primary: { kind: rss, url: https://lexfridman.com/feed/podcast/ }
+    geo: us
+    signal_density: medium
+    notes: Frontier-AI guest interviews (Altman, Hassabis, Karpathy, etc); long-form context for Pillar 5 mapping.
+
 # =============================================================================
 # TODO: 待 v0.2 補強的類別
 # =============================================================================
