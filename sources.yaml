@@ -111,6 +111,37 @@ sources:
     primary: { kind: rss, url: https://deepmind.google/discover/blog/rss.xml }
     geo: us
     signal_density: high
+    notes: Research-focused. Major Gemini launches go via google-ai-blog instead.
+
+  - id: google-ai-blog
+    name: Google AI Blog (consumer + product)
+    pillar_tags: [3, 1]
+    type: frontier_lab_blog
+    primary: { kind: scrape, url: https://blog.google/technology/ai/ }
+    fallback: [{ kind: rss, url: https://blog.google/technology/ai/rss/ }]
+    geo: us
+    signal_density: very_high
+    notes: Where Gemini launches, Workspace AI updates, and consumer-facing AI announcements actually appear. Critical Pillar 3 channel that was missing in v0.1.
+
+  - id: google-research-blog
+    name: Google Research Blog
+    pillar_tags: [3, 4]
+    type: frontier_lab_blog
+    primary: { kind: rss, url: https://research.google/blog/rss/ }
+    fallback: [{ kind: scrape, url: https://research.google/blog/ }]
+    geo: us
+    signal_density: high
+    notes: Non-DeepMind Google Research output (Brain legacy, AI Research). Adds capability + harness signal beyond the research-narrow DeepMind blog.
+
+  - id: google-cloud-ai-blog
+    name: Google Cloud AI/ML Blog (Vertex AI)
+    pillar_tags: [1, 2, 4]
+    type: vendor_blog
+    primary: { kind: rss, url: https://cloud.google.com/blog/products/ai-machine-learning/rss }
+    fallback: [{ kind: scrape, url: https://cloud.google.com/blog/products/ai-machine-learning }]
+    geo: us
+    signal_density: high
+    notes: Vertex AI enterprise updates, customer deployments, GCP-specific competitive moves. Direct competitor intel for IBM AI-on-cloud sales conversations.
 
   - id: microsoft-research-ai
     name: Microsoft Research AI

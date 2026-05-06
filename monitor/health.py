@@ -30,12 +30,40 @@ from monitor.triggers import ALL_TRIGGERS, GREEN, RED, YELLOW, Trigger
 log = logging.getLogger("health")
 
 
-def assemble_state(db_path: Path, cost_log_path: Path) -> dict[str, Any]:
-    """Read DB + cost log, compute per-layer metrics. Returns a dict."""
+def assemble_state(
+    db_path: Path,
+    cost_log_path: Path,
+    sources_yaml_path: Path | None = None,
+) -> dict[str, Any]:
+    """Read DB + cost log + sources.yaml, compute per-layer metrics. Returns a dict."""
     state: dict[str, Any] = {
         "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "db_path": str(db_path),
     }
+
+    # Load declared source IDs from sources.yaml so we can detect "in yaml but
+    # never collected" (the failure mode caught in Session 7).
+    if sources_yaml_path and sources_yaml_path.exists():
+        try:
+            import yaml
+            with sources_yaml_path.open() as f:
+                yml = yaml.safe_load(f)
+            declared = set()
+            for s in (yml.get("sources") or []):
+                if isinstance(s, dict) and s.get("id"):
+                    # Only count "supported" sources — paywalled / mvp_deferred ones
+                    # are intentionally not collected, so excluding them keeps the
+                    # uncollected-sources trigger from false-positive on those.
+                    if s.get("human_required"):
+                        continue
+                    if s.get("mvp_active") is False:
+                        continue
+                    if s.get("mvp_mode", "full") != "full":
+                        continue
+                    declared.add(s["id"])
+            state["collector_declared_sources"] = declared
+        except Exception as e:  # noqa: BLE001
+            log.warning("failed to read sources.yaml for declared-sources check: %s", e)
 
     if not db_path.exists():
         log.warning("DB not found at %s — first run? state will be empty.", db_path)

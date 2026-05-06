@@ -41,6 +41,42 @@ TriggerFn = Callable[[dict[str, Any]], Optional[Trigger]]
 # COLLECTOR triggers
 # =============================================================================
 
+def collector_uncollected_sources(state: dict) -> Trigger | None:
+    """Sources declared in sources.yaml but never collected (no items in DB).
+
+    Catches the silent failure surfaced in Session 7: yaml had 185 sources
+    but only 5 had ever been hit because all smoke tests used --limit-sources.
+    Without this trigger, "we have 1073 items" felt like good coverage when
+    really it was 5/185 sources × heavy concentration in OpenAI archive.
+    """
+    declared = state.get("collector_declared_sources", set())
+    collected = set(state.get("collector_per_source", {}).keys())
+    if not declared:
+        return None
+    uncollected = sorted(declared - collected)
+    if not uncollected:
+        return None
+    pct_missing = len(uncollected) / len(declared)
+    sample = ", ".join(uncollected[:8])
+    if len(uncollected) > 8:
+        sample += f", ... ({len(uncollected) - 8} more)"
+    return Trigger(
+        severity=RED if pct_missing > 0.5 else YELLOW,
+        layer="collector",
+        title=f"{len(uncollected)} of {len(declared)} declared sources have never been collected",
+        detail=(
+            f"{pct_missing:.0%} of sources.yaml entries have zero items in DB.\n"
+            f"Sample: {sample}"
+        ),
+        fix=(
+            "Run `collect` (no --limit-sources flag) so the orchestrator hits every "
+            "supported source. ~30–45 min, $0 API cost (HTTP only). Backlog of items "
+            "then needs `triage` (~$2 / 1000 items at Haiku rates)."
+        ),
+        reference="Session 7 PROJECT_LOG; collector/run.py orchestrator",
+    )
+
+
 def collector_extract_success_too_low(state: dict) -> Trigger | None:
     """Per-source extract_success_rate < 0.5 → likely needs JS-render fix."""
     bad = []
@@ -144,25 +180,37 @@ def triage_pillar_thin(state: dict) -> Trigger | None:
 
 
 def triage_score_compression(state: dict) -> Trigger | None:
-    """High-signal items' score stddev too low → Haiku not differentiating."""
+    """Score compression: low stddev AND narrow range.
+
+    A pure stddev check fires false positives when a healthy distribution
+    happens to have a heavy mode (e.g. mass at 0.70 because that's a natural
+    "solid but not must-read" score). The honest signal is "stddev low AND
+    range narrow" — if we see scores from 0.60 to 0.90 (range=0.30), Pulse
+    can pick differentiated Top 3 even if many items cluster at 0.70.
+
+    Threshold: range < 0.20 (i.e. all high-signal items within 0.6–0.8) AND
+    stddev < 0.05 → real compression. Either condition alone is fine.
+    """
     info = state.get("triage_high_signal_score_stats")
     if not info or info["count"] < 10:
         return None
-    if info["stddev"] >= 0.05:
+    score_range = info["max"] - info["min"]
+    if info["stddev"] >= 0.05 or score_range >= 0.20:
         return None
     return Trigger(
         severity=YELLOW,
         layer="triage",
         title="Score compression in high-signal bucket",
         detail=(
-            f"High-signal items: count={info['count']}, "
-            f"mean={info['mean']:.2f}, stddev={info['stddev']:.3f} (target stddev ≥0.05)"
+            f"High-signal items: count={info['count']}, mean={info['mean']:.2f}, "
+            f"stddev={info['stddev']:.3f}, range=[{info['min']:.2f}, {info['max']:.2f}] "
+            f"(target: stddev ≥0.05 OR range ≥0.20)"
         ),
         fix=(
-            "Haiku is collapsing all high items to ~0.70 instead of differentiating "
-            "0.65 'solid' vs 0.85 'must-read'. Pulse can't pick true Top 3.\n"
-            "Either: (a) tighten triage prompt's signal calibration section, "
-            "(b) feed triage more cross-source diversity (single-source samples compress naturally)."
+            "Haiku is collapsing all high items into a narrow band — Pulse can't "
+            "pick true Top 3. Either: (a) tighten triage prompt's signal calibration "
+            "section, (b) feed triage more cross-source diversity (single-source "
+            "samples compress naturally)."
         ),
         reference="synthesizer/prompts.py TRIAGE_SYSTEM § 'Signal calibration'",
     )
@@ -199,6 +247,7 @@ def cost_weekly_alarm(state: dict) -> Trigger | None:
 
 ALL_TRIGGERS: list[TriggerFn] = [
     # Collector
+    collector_uncollected_sources,
     collector_extract_success_too_low,
     collector_source_dead,
     collector_scrape_fallback_dominance,

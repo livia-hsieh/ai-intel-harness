@@ -31,6 +31,7 @@ DEFAULT_DB_PATH = REPO_ROOT / "data" / "dedup.sqlite"
 DEFAULT_COST_LOG = REPO_ROOT / "data" / "cost_log.jsonl"
 DEFAULT_HEALTH_LOG = REPO_ROOT / "data" / "health_log.jsonl"
 DEFAULT_HEALTH_MD = REPO_ROOT / "data" / "health_latest.md"
+DEFAULT_SOURCES_PATH = REPO_ROOT / "sources.yaml"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -40,7 +41,7 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(message)s",
     )
 
-    state = assemble_state(args.db, args.cost_log)
+    state = assemble_state(args.db, args.cost_log, sources_yaml_path=args.sources)
     triggers = evaluate(state)
     md = render_markdown(state, triggers)
 
@@ -59,6 +60,7 @@ def main(argv: list[str] | None = None) -> int:
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="health", description="Pipeline health monitor.")
     p.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+    p.add_argument("--sources", type=Path, default=DEFAULT_SOURCES_PATH)
     p.add_argument("--cost-log", type=Path, default=DEFAULT_COST_LOG)
     p.add_argument("--health-log", type=Path, default=DEFAULT_HEALTH_LOG)
     p.add_argument("--health-md", type=Path, default=DEFAULT_HEALTH_MD)
