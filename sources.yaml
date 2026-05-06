@@ -937,12 +937,11 @@ sources:
     pillar_tags: [1]
     type: enterprise_engineering_blog
     primary:
-      - { kind: scrape, url: https://www.foxconn.com/en-us/press-center }
+      - { kind: scrape, url: https://www.foxconn.com/en-us/press-center/press-releases/latest-news }
       - { kind: scrape, url: https://www.honhai.com/en-us/news }
     geo: taiwan
     signal_density: medium
-    mvp_active: false
-    notes: "[deferred Phase 1.5] Taiwan corp - 404, custom scraping needed."
+    notes: "[recovered Phase 1.5] Real news URL discovered via probe."
   - id: wistron
     name: Wistron / 緯創
     pillar_tags: [1]
@@ -976,20 +975,18 @@ sources:
     name: Compal 仁寶
     pillar_tags: [1]
     type: enterprise_engineering_blog
-    primary: { kind: scrape, url: https://www.compal.com/news/ }
+    primary: { kind: scrape, url: https://www.compal.com/en-us/investor-relations/events-announcements/ }
     geo: taiwan
     signal_density: low
-    mvp_active: false
-    notes: "[deferred Phase 1.5] Taiwan corp - needs custom scraper."
+    notes: "[recovered Phase 1.5] Real news URL discovered via probe."
   - id: inventec
     name: Inventec 英業達
     pillar_tags: [1]
     type: enterprise_engineering_blog
-    primary: { kind: scrape, url: https://www.inventec.com/en/news }
+    primary: { kind: scrape, url: https://www.inventec.com/en/news.htm }
     geo: taiwan
     signal_density: low
-    mvp_active: false
-    notes: "[deferred Phase 1.5] Taiwan corp - 404 on /news."
+    notes: "[recovered Phase 1.5] Real news URL discovered via probe."
   - id: tsmc
     name: TSMC (Tech Symposium + IR)
     pillar_tags: [1]
@@ -1176,12 +1173,11 @@ sources:
     name: 玉山金控 (E.SUN Financial Holding, 金秘書)
     pillar_tags: [1]
     type: enterprise_engineering_blog
-    primary: { kind: scrape, url: https://www.esunfhc.com/zh-tw/news }
+    primary: { kind: scrape, url: https://www.esunfhc.com/zh-tw/news-center/news-center/news }
     geo: taiwan
     signal_density: high
     notes: 你既有 wiki 已記載 esun-ai-governance 案
-    mvp_active: false
-    notes: "[deferred Phase 1.5] Taiwan bank - 404. HIGH priority for custom scraper later."
+    notes: "[recovered Phase 1.5] Real news URL discovered via probe."
   - id: ctbc
     name: 中信金控 (CTBC, 智尊保 / 智能客服 PLUS)
     pillar_tags: [1]
