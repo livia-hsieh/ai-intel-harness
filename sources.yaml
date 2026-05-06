@@ -155,7 +155,7 @@ sources:
     name: Meta AI Research
     pillar_tags: [3]
     type: frontier_lab_blog
-    primary: { kind: rss, url: https://ai.meta.com/blog/rss/ }
+    primary: { kind: scrape, url: https://ai.meta.com/blog/ }
     geo: us
     signal_density: high
     notes: LLAMA releases, FAIR research
@@ -175,7 +175,8 @@ sources:
     primary: { kind: scrape, url: https://x.ai/news }
     geo: us
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] 403 x.ai/news bot detection."
   - id: cohere
     name: Cohere Research
     pillar_tags: [3, 4]
@@ -200,7 +201,8 @@ sources:
     geo: europe
     signal_density: high
     notes: Safety / deception eval research
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] JS-rendered."
   - id: metr
     name: METR (Model Evaluation and Threat Research)
     pillar_tags: [3, 4]
@@ -370,7 +372,7 @@ sources:
     pillar_tags: [4, 5]
     type: individual_influencer_multiplatform
     primary:
-      - { kind: rss, url: https://www.deeplearning.ai/the-batch/feed/ }
+      - { kind: scrape, url: https://www.deeplearning.ai/the-batch/ }
       - { kind: twitter, handle: AndrewYNg }
     geo: us
     signal_density: high
@@ -498,7 +500,7 @@ sources:
     name: jxnl (Jason Liu) - Instructor
     pillar_tags: [4]
     type: personal_blog
-    primary: { kind: rss, url: https://jxnl.co/feed.xml }
+    primary: { kind: scrape, url: https://jxnl.co/ }
     fallback: [{ kind: github, repo: jxnl/instructor }]
     geo: us
     signal_density: high
@@ -617,7 +619,8 @@ sources:
     geo: us
     signal_density: high
     notes: BFSI tier-1 deployment baseline
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Paywall / aggressive bot detection (403). Use Bloomberg Terminal manually."
   - id: klarna-engineering
     name: Klarna Engineering Blog
     pillar_tags: [1, 4]
@@ -679,7 +682,7 @@ sources:
     name: Vercel AI SDK Blog
     pillar_tags: [4]
     type: vendor_blog
-    primary: { kind: rss, url: https://vercel.com/blog/rss.xml }
+    primary: { kind: scrape, url: https://vercel.com/blog }
     geo: us
     signal_density: medium
 
@@ -725,7 +728,7 @@ sources:
     name: Oracle AI Blog
     pillar_tags: [1, 2]
     type: vendor_blog
-    primary: { kind: rss, url: https://blogs.oracle.com/ai-and-datascience/rss }
+    primary: { kind: scrape, url: https://blogs.oracle.com/ai-and-datascience/ }
     geo: us
     signal_density: medium
 
@@ -785,7 +788,8 @@ sources:
     primary: { kind: scrape, url: https://www.strategyand.pwc.com/gx/en/unique-solutions/ai.html }
     geo: us
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] URL pattern changed; PwC moved AI content."
   - id: ey-ai
     name: EY AI Insights
     pillar_tags: [2]
@@ -806,7 +810,7 @@ sources:
     name: Deloitte AI Institute
     pillar_tags: [2]
     type: vendor_blog
-    primary: { kind: scrape, url: https://www2.deloitte.com/us/en/pages/consulting/topics/ai-institute.html }
+    primary: { kind: scrape, url: https://www2.deloitte.com/us/en/insights/focus/cognitive-technologies.html }
     geo: us
     signal_density: medium
 
@@ -818,7 +822,7 @@ sources:
     name: Stanford HAI
     pillar_tags: [2, 3]
     type: vendor_blog
-    primary: { kind: rss, url: https://hai.stanford.edu/news/rss }
+    primary: { kind: scrape, url: https://hai.stanford.edu/news }
     geo: us
     signal_density: high
     notes: AI Index Report 是年度權威
@@ -852,7 +856,7 @@ sources:
     name: Harvard Business Review (AI tag)
     pillar_tags: [2]
     type: vendor_blog
-    primary: { kind: scrape, url: https://hbr.org/topic/artificial-intelligence }
+    primary: { kind: scrape, url: https://hbr.org/topic/ai-and-machine-learning }
     geo: us
     signal_density: medium
 
@@ -875,7 +879,8 @@ sources:
     primary: { kind: scrape, url: https://www.bosch-ai.com }
     geo: europe
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Domain bosch-ai.com dead. Bosch AI now at bosch.com/research."
   - id: schneider-ecostruxure
     name: Schneider Electric EcoStruxure
     pillar_tags: [1]
@@ -891,7 +896,8 @@ sources:
     primary: { kind: scrape, url: https://new.abb.com/abb-ability }
     geo: europe
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Network unreachable; domain may be retired."
   - id: rockwell-automation
     name: Rockwell Automation
     pillar_tags: [1]
@@ -907,7 +913,8 @@ sources:
     primary: { kind: scrape, url: https://www.honeywell.com/us/en/forge }
     geo: us
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] 404. Honeywell Forge moved structure."
   - id: ge-digital
     name: GE Digital
     pillar_tags: [1]
@@ -923,7 +930,8 @@ sources:
     primary: { kind: scrape, url: https://www.mitsubishielectric.com/fa/efactory.html }
     geo: asia_other
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] 404. Site reorganized."
   - id: foxconn-hon-hai
     name: Foxconn / 鴻海
     pillar_tags: [1]
@@ -933,7 +941,8 @@ sources:
       - { kind: scrape, url: https://www.honhai.com/en-us/news }
     geo: taiwan
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan corp - 404, custom scraping needed."
   - id: wistron
     name: Wistron / 緯創
     pillar_tags: [1]
@@ -943,7 +952,8 @@ sources:
     geo: taiwan
     signal_density: high
     notes: Livia 直接客戶,IR + press release 必抓
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan corp - IR domain unreachable."
   - id: pegatron
     name: Pegatron 和碩
     pillar_tags: [1]
@@ -951,7 +961,8 @@ sources:
     primary: { kind: scrape, url: https://www.pegatroncorp.com/news }
     geo: taiwan
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan corp - scrape no articles."
   - id: quanta-computer
     name: Quanta 廣達
     pillar_tags: [1]
@@ -959,7 +970,8 @@ sources:
     primary: { kind: scrape, url: https://www.quantatw.com/Quanta/english/news/news.aspx }
     geo: taiwan
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan corp - scrape no articles."
   - id: compal
     name: Compal 仁寶
     pillar_tags: [1]
@@ -967,7 +979,8 @@ sources:
     primary: { kind: scrape, url: https://www.compal.com/news/ }
     geo: taiwan
     signal_density: low
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan corp - needs custom scraper."
   - id: inventec
     name: Inventec 英業達
     pillar_tags: [1]
@@ -975,7 +988,8 @@ sources:
     primary: { kind: scrape, url: https://www.inventec.com/en/news }
     geo: taiwan
     signal_density: low
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan corp - 404 on /news."
   - id: tsmc
     name: TSMC (Tech Symposium + IR)
     pillar_tags: [1]
@@ -984,7 +998,8 @@ sources:
     geo: taiwan
     signal_density: high
     notes: AI fab capacity 最關鍵,但對外披露少
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] 403. Manual quarterly check of IR page."
   - id: asml
     name: ASML
     pillar_tags: [1]
@@ -1012,7 +1027,8 @@ sources:
     primary: { kind: scrape, url: https://www.cognex.com/blogs }
     geo: us
     signal_density: low
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] HTTP 429 rate-limited; needs delay."
   - id: augury
     name: Augury (Predictive Maintenance)
     pillar_tags: [1]
@@ -1064,7 +1080,8 @@ sources:
     primary: { kind: scrape, url: https://developer.gs.com/blog }
     geo: us
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] developer.gs.com requires auth."
   - id: wells-fargo-tech
     name: Wells Fargo Innovation
     pillar_tags: [1]
@@ -1072,12 +1089,13 @@ sources:
     primary: { kind: scrape, url: https://newsroom.wf.com }
     geo: us
     signal_density: low
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] 403 newsroom.wf.com bot blocked."
   - id: capital-one-tech
     name: Capital One Tech Blog
     pillar_tags: [1, 4]
     type: enterprise_engineering_blog
-    primary: { kind: rss, url: https://www.capitalone.com/tech/blog/feed/ }
+    primary: { kind: scrape, url: https://www.capitalone.com/tech/ }
     geo: us
     signal_density: high
     notes: 對 AI/ML 公開最積極的 BFSI
@@ -1121,7 +1139,8 @@ sources:
     primary: { kind: scrape, url: https://www.uobgroup.com/web-resources/uobgroup/pdf/announcements }
     geo: asia_other
     signal_density: low
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Singapore bank - PDF-only announcements."
   - id: mizuho
     name: Mizuho Financial Group
     pillar_tags: [1]
@@ -1133,7 +1152,8 @@ sources:
   # ===========================================================================
   # 🏦 BANKING / FINANCE — Taiwan
   # ===========================================================================
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Japan bank - 404."
   - id: cathay-financial
     name: 國泰金控 (Cathay Financial Holdings, Agia + GAIA Studio)
     pillar_tags: [1]
@@ -1160,7 +1180,8 @@ sources:
     geo: taiwan
     signal_density: high
     notes: 你既有 wiki 已記載 esun-ai-governance 案
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan bank - 404. HIGH priority for custom scraper later."
   - id: ctbc
     name: 中信金控 (CTBC, 智尊保 / 智能客服 PLUS)
     pillar_tags: [1]
@@ -1169,7 +1190,8 @@ sources:
     geo: taiwan
     signal_density: high
     notes: Sherlock AML; 你 wiki 已記載 ctbc-綠色偵碳 案
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan bank - 404 on /news."
   - id: taipei-fubon
     name: 台北富邦銀行 (Taipei Fubon, AI 鷹眼識詐)
     pillar_tags: [1]
@@ -1177,7 +1199,8 @@ sources:
     primary: { kind: scrape, url: https://www.taipeifubon.com.tw/main_en/news.htm }
     geo: taiwan
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan bank - network unreachable."
   - id: taishin-bank
     name: 台新銀行 (Taishin, Richart Rose Chatbot)
     pillar_tags: [1]
@@ -1185,7 +1208,8 @@ sources:
     primary: { kind: scrape, url: https://www.taishinbank.com.tw/TSB/news }
     geo: taiwan
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan bank - 404."
   - id: mega-bank
     name: 兆豐銀行 (Mega Bank)
     pillar_tags: [1]
@@ -1209,7 +1233,8 @@ sources:
     primary: { kind: scrape, url: https://bank.sinopac.com }
     geo: taiwan
     signal_density: low
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan bank - scrape no articles."
   - id: tcb-bank
     name: 合作金庫 (Taiwan Cooperative Bank, eLoan)
     pillar_tags: [1]
@@ -1255,7 +1280,8 @@ sources:
     primary: { kind: scrape, url: https://tech.pingan.com }
     geo: china
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Chinese site - JS render needed."
   - id: zhongan-tech
     name: ZhongAn 眾安科技
     pillar_tags: [1]
@@ -1263,7 +1289,8 @@ sources:
     primary: { kind: scrape, url: https://www.zhongan.com/about/news }
     geo: china
     signal_density: low
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Chinese site - structure + locale issues."
   - id: lemonade
     name: Lemonade (InsurTech)
     pillar_tags: [1]
@@ -1313,7 +1340,8 @@ sources:
       - { kind: twitter, handle: saranormous }
     geo: us
     signal_density: high
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Same as no-priors. Defer."
   - id: elad-gil
     name: Elad Gil (Independent)
     pillar_tags: [2]
@@ -1518,7 +1546,7 @@ sources:
     name: The Batch (DeepLearning.AI / Andrew Ng)
     pillar_tags: [3, 5]
     type: newsletter
-    primary: { kind: rss, url: https://www.deeplearning.ai/the-batch/feed/ }
+    primary: { kind: scrape, url: https://www.deeplearning.ai/the-batch/ }
     geo: us
     signal_density: medium
 
@@ -1529,7 +1557,8 @@ sources:
     primary: { kind: scrape, url: https://agents.blog }
     geo: us
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] JS-rendered Webflow."
   - id: last-week-in-ai
     name: Last Week in AI
     pillar_tags: [5]
@@ -1543,7 +1572,7 @@ sources:
     name: Ben's Bites
     pillar_tags: [5]
     type: newsletter
-    primary: { kind: rss, url: https://bensbites.beehiiv.com/feed }
+    primary: { kind: scrape, url: https://www.bensbites.co/ }
     geo: us
     signal_density: medium
 
@@ -1562,7 +1591,8 @@ sources:
     primary: { kind: rss, url: https://www.no-priors.com/feed.xml }
     geo: us
     signal_density: high
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Domain network failures. Defer."
   - id: practical-ai
     name: Practical AI
     pillar_tags: [4]
@@ -1630,7 +1660,8 @@ sources:
   # ===========================================================================
   # 📰 TAIWAN MEDIA / INDUSTRY ANALYST
   # ===========================================================================
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Singapore MAS - custom news widgets."
   - id: ithome-tw
     name: iThome
     pillar_tags: [1, 4]
@@ -1655,7 +1686,8 @@ sources:
     primary: { kind: rss, url: https://www.bnext.com.tw/rss/category/all }
     geo: taiwan
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan magazine - RSS path 404."
   - id: ctee-tech
     name: 工商時報科技版
     pillar_tags: [1, 2]
@@ -1663,7 +1695,8 @@ sources:
     primary: { kind: scrape, url: https://www.ctee.com.tw/livenews/aj }
     geo: taiwan
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] 403 bot detection. Taiwan paywall site."
   - id: udn-money-fintech
     name: 經濟日報金融科技版
     pillar_tags: [1, 2]
@@ -1676,7 +1709,7 @@ sources:
     name: INSIDE 硬塞
     pillar_tags: [1, 4, 5]
     type: newsletter
-    primary: { kind: rss, url: https://www.inside.com.tw/feed }
+    primary: { kind: scrape, url: https://www.inside.com.tw/ }
     geo: taiwan
     signal_density: medium
 
@@ -1707,7 +1740,8 @@ sources:
     primary: { kind: scrape, url: https://www.nstc.gov.tw }
     geo: taiwan
     signal_density: low
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan NSTC - custom parsing needed."
   - id: itri-taiwan
     name: 工研院 ITRI
     pillar_tags: [1]
@@ -1715,7 +1749,8 @@ sources:
     primary: { kind: scrape, url: "https://www.itri.org.tw/ListStyle.aspx?DisplayStyle=03" }
     geo: taiwan
     signal_density: medium
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan ITRI - ASPX news listing."
   - id: iii-taiwan
     name: 資策會 III
     pillar_tags: [1, 2]
@@ -1727,7 +1762,8 @@ sources:
   # ===========================================================================
   # 📚 PAPER FEEDS
   # ===========================================================================
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Taiwan III - generic scraper insufficient."
   - id: arxiv-cs-ai
     name: arXiv cs.AI + cs.CL + cs.LG (filtered)
     pillar_tags: [3, 4]
@@ -1738,7 +1774,8 @@ sources:
     geo: us
     signal_density: high
     notes: Heavy filter; only LLM-篩選後保留約 5%
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] Third-party arxiv-sanity-lite.com unstable."
   - id: huggingface-daily-papers
     name: Hugging Face Daily Papers
     pillar_tags: [3, 4]
@@ -1864,7 +1901,8 @@ sources:
     geo: us
     signal_density: medium
     notes: ML observability / eval tooling; good production-ML reference content.
-
+    mvp_active: false
+    notes: "[deferred Phase 1.5] JS-rendered Next.js."
   - id: huggingface-blog
     name: Hugging Face Blog
     pillar_tags: [3, 4]
