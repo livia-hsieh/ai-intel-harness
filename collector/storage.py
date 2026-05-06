@@ -289,23 +289,34 @@ class Storage:
 
     # --- triage (Task #4: Haiku per-item decisions) ---
 
-    def list_untriaged_items(self, limit: int | None = None) -> list[dict[str, Any]]:
+    def list_untriaged_items(
+        self,
+        limit: int | None = None,
+        source_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Items the triage layer has not yet processed.
 
         Returned as plain dicts (not the Item dataclass) because the triage
         prompt only needs id/source_id/title/excerpt/published_at/pillar_tags.
+
+        `source_id`: when set, restrict to items from that one source. Used by
+        per-Pillar calibration runs (e.g. triage --source openai-blog --limit 30).
         """
+        params: tuple = ()
         sql = """
             SELECT id, source_id, url, title, excerpt, published_at, pillar_tags
               FROM items
              WHERE triage_at IS NULL
-             ORDER BY id ASC
         """
+        if source_id:
+            sql += " AND source_id = ?"
+            params = (source_id,)
+        sql += " ORDER BY id ASC"
         if limit:
             sql += f" LIMIT {int(limit)}"
         with self._conn() as conn:
             cols = ("id", "source_id", "url", "title", "excerpt", "published_at", "pillar_tags")
-            return [dict(zip(cols, row)) for row in conn.execute(sql)]
+            return [dict(zip(cols, row)) for row in conn.execute(sql, params)]
 
     def record_triage(
         self,
@@ -326,6 +337,57 @@ class Storage:
                 """,
                 (json.dumps(pillars), signal, reason, _utc_now(), model, item_id),
             )
+
+    def list_high_signal_items_for_pillar(
+        self,
+        pillar_n: int,
+        *,
+        min_signal: float = 0.6,
+        published_after: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Items where triage_signal ≥ min_signal AND triage_pillars contains pillar_n.
+
+        Used by Pulse synthesis. `published_after` filters to a digest window
+        (e.g. last 7 days for weekly run); when None returns all qualifying items
+        in the DB (used for backlog smoke tests).
+
+        Note: triage_pillars is stored as JSON array. We use SQLite's LIKE on the
+        JSON text for the pillar membership check — fast and avoids a JSON1
+        extension dependency. Pattern: '%[%, ]?<n>[, ]%]?' simplified to LIKE
+        '%<n>%' with a string-anchor sanity check at read-time.
+        """
+        sql = """
+            SELECT id, source_id, url, title, excerpt, published_at, pillar_tags,
+                   triage_signal, triage_pillars, triage_reason
+              FROM items
+             WHERE triage_at IS NOT NULL
+               AND triage_signal >= ?
+               AND triage_pillars LIKE ?
+        """
+        params: list[Any] = [min_signal, f"%{pillar_n}%"]
+        if published_after:
+            sql += " AND (published_at >= ? OR published_at IS NULL)"
+            params.append(published_after)
+        sql += " ORDER BY triage_signal DESC, id ASC"
+        cols = (
+            "id", "source_id", "url", "title", "excerpt", "published_at",
+            "pillar_tags", "signal", "pillars", "triage_reason",
+        )
+        with self._conn() as conn:
+            rows = list(conn.execute(sql, params))
+        out = []
+        for row in rows:
+            d = dict(zip(cols, row))
+            # parse triage_pillars JSON, double-check pillar_n really is in there
+            try:
+                pillars = json.loads(d["pillars"]) if d["pillars"] else []
+            except json.JSONDecodeError:
+                pillars = []
+            if pillar_n not in pillars:
+                continue  # LIKE false-positive (e.g. pillar 5 matched within "[15]")
+            d["pillars"] = pillars
+            out.append(d)
+        return out
 
     def stats(self) -> dict[str, int]:
         with self._conn() as conn:

@@ -90,6 +90,15 @@ force-pick one.
 0.3-0.5 = watch list mention only
 0.0-0.2 = skip; recorded only for dedup history
 
+# Missing excerpt
+If the excerpt is "(no excerpt)" but the TITLE itself names a specific
+technique, paper, lab, or finding (e.g. "Harness design for long-running
+agents", "Contextual retrieval", "Multi-agent research system"), score based
+on the title — typically 0.5–0.7 from a credible source. Do NOT default to
+0.0 just because the body is missing; that throws away signal from titles
+that are themselves informative. Only score 0.0 when the title is also
+generic ("Developer docs", "About us", "Subscribe").
+
 Be strict. Most items will land 0.3 or below. The pipeline's value is what it
 filters OUT, not what it keeps."""
 
@@ -112,3 +121,147 @@ Excerpt:
 {excerpt}
 
 Output the JSON object now."""
+
+
+# =============================================================================
+# PULSE — Sonnet 4.6 weekly per-Pillar synthesis
+# =============================================================================
+
+PULSE_SYSTEM = """\
+You are the Pulse synthesizer of an AI intelligence pipeline serving Livia,
+who is simultaneously: (a) IBM consultant selling AI transformation to Taiwan
+banks (Cathay, E.SUN, CTBC, Taipei Fubon, Taishin, Mega, First, SinoPac, TCB,
+Taiwan Cooperative) and manufacturers (TSMC, Foxconn, Wistron, Pegatron,
+Quanta, Compal, Inventec, ASML, MediaTek), and (b) harness engineer in
+formation building this very pipeline as portfolio.
+
+Each call you receive ONE Pillar's set of high-signal triaged items for the
+period. Your job: produce that Pillar's section of the weekly digest.
+
+# Output contract — STRICT
+
+Produce Markdown in EXACTLY this structure:
+
+```
+## Pulse — Top 3
+
+### 1. <one-line headline that names the actor + what they did>
+[原文 / 推論 / 假設] <2–4 sentences in English. State the fact, the source
+data, and the SO WHAT for Livia's client conversations or harness practice.>
+- Source: [<source name>](<URL>)
+- 對客戶的具體含意 (1 句繁中 with English jargon inline): <...>
+
+### 2. <headline>
+<same structure>
+
+### 3. <headline>
+<same structure>
+
+## Watch list
+
+- [<source>](<URL>) — <one line, ≤25 words, why it's worth a glance>
+- [<source>](<URL>) — <one line>
+- ...
+
+## Verification hints
+
+This briefing contains <N> [推論] segments and <M> [假設] segments. Before
+citing in client conversations, verify these specific points:
+1. <point 1>
+2. <point 2>
+3. <point 3>
+```
+
+# Selection rules
+
+- **Top 3 = highest-signal × highest-actionability for Livia THIS WEEK**, not
+  just highest signal score from triage. A 0.65 item with direct Cathay
+  applicability beats a 0.75 abstract paper.
+- Watch list = the rest of the items provided that pass a "worth one line"
+  bar. Skip the rest silently.
+- If FEWER than 3 high-quality items exist, do NOT pad. Write "Top 1" or
+  "Top 2" honestly. The pipeline's value is what it filters OUT.
+
+# Provenance markers — MANDATORY
+
+Every Pulse paragraph starts with one of:
+- `[原文]` — the fact comes verbatim from the source (excerpt or title)
+- `[推論]` — you inferred this from the source + your knowledge; cite both
+- `[假設]` — you filled a gap with reasonable speculation; flag it loudly
+
+Most items will be `[推論]` because excerpts are short. Be honest about gaps.
+
+# URL citations — MANDATORY
+
+Every claim must hyperlink to its source. No URL → drop the claim. The
+"Verification hints" section is for the user to spot-check the claim
+chain — make it specific (URLs + what to check), not generic.
+
+# Tone
+
+- Tight. No filler. No "AI is transformative" phrases.
+- Opinionated. Take a position on what this means for Livia's clients.
+- Bilingual: English first as primary content; one繁中 line per Pulse item
+  for the客戶含意 (client implication), with English jargon inline (e.g.
+  「Anthropic 的 prompt caching 把 input cost 降 70%」).
+- Pushback-friendly. If the source's claim is dubious, say so: "[推論] but
+  Anthropic's own benchmarks suggest...". Livia welcomes debate.
+
+# What this is NOT
+
+- NOT a news summary. Don't paraphrase the article.
+- NOT a vocabulary lesson. Don't define basic terms.
+- NOT a vendor pitch. If the item is vendor PR, demote it to Watch or skip.
+"""
+
+
+def pulse_user_message(*, pillar_n: int, pillar_name: str, items: list[dict]) -> str:
+    """Compose the Pulse user message: one Pillar's triaged items.
+
+    `items` is a list of dicts with keys:
+      id, source_id, source_name, signal, pillars, title, excerpt, url,
+      published_at, triage_reason
+    """
+    lines = [
+        f"# Pillar {pillar_n} — {pillar_name}",
+        f"",
+        f"You have {len(items)} high-signal item(s) triaged this period for this Pillar.",
+        f"Produce the Pulse section per the output contract.",
+        f"",
+        f"---",
+        f"",
+    ]
+    for it in items:
+        title = it.get("title") or "(no title)"
+        excerpt = (it.get("excerpt") or "(no excerpt)").strip()
+        url = it.get("url", "")
+        source = it.get("source_name") or it.get("source_id", "?")
+        pub = it.get("published_at") or "(unknown)"
+        signal = it.get("signal", 0.0)
+        pillars = it.get("pillars") or []
+        triage_reason = it.get("triage_reason") or ""
+        lines.extend([
+            f"## item id={it['id']}  signal={signal:.2f}  pillars={pillars}",
+            f"- Source: {source}",
+            f"- Published: {pub}",
+            f"- URL: {url}",
+            f"- Title: {title}",
+            f"- Triage rationale: {triage_reason}",
+            f"- Excerpt:",
+            f"",
+            f"{excerpt}",
+            f"",
+            f"---",
+            f"",
+        ])
+    lines.append("Now produce the Pulse Markdown for this Pillar.")
+    return "\n".join(lines)
+
+
+PILLAR_NAMES = {
+    1: "產業 AI 真實落地 (BFSI + 製造業)",
+    2: "AI 戰略 / 治理 / 董事會層級論述",
+    3: "Frontier 能力 + 模型動向",
+    4: "Harness Engineering 實作技藝",
+    5: "學派 / 社群 / 思想動態",
+}

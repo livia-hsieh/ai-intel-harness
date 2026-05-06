@@ -22,6 +22,7 @@ from urllib.parse import urljoin, urlparse
 import feedparser
 
 from collector.config import Channel, Source
+from collector.extract import fetch_excerpt
 from collector.storage import Item
 
 USER_AGENT = "ai-intel-harness/0.2 (+https://github.com/livia-hsieh/ai-intel-harness)"
@@ -95,15 +96,22 @@ def _try_one(source: Source, url: str) -> list[Item] | None:
         eurl = _entry_url(entry)
         if not eurl:
             continue
+        excerpt = _entry_excerpt(entry)
+        # If the RSS feed didn't include a usable summary, fetch the article
+        # page and extract the body. Most major feeds (OpenAI, Latent Space)
+        # ship summaries; the back-fill only fires for bare-title feeds.
+        if not excerpt:
+            excerpt = fetch_excerpt(eurl)
         items.append(
             Item(
                 source_id=source.id,
                 url=eurl,
                 title=entry.get("title"),
-                excerpt=_entry_excerpt(entry),
+                excerpt=excerpt,
                 published_at=_entry_published(entry),
                 pillar_tags=source.pillar_tags,
                 raw_size_bytes=len(str(entry)),
+                scaffolding_note=None if excerpt else "excerpt_extraction_failed",
             )
         )
     return items if items else None

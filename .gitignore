@@ -31,6 +31,8 @@ data/dedup.sqlite-*
 data/*.log
 data/*.jsonl
 data/cache/
+# health_latest.md IS committed (portfolio evidence per design).
+# health_log.jsonl is gitignored (transient per-run history; covered by *.jsonl above).
 
 # Claude Code local settings
 .claude/

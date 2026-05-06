@@ -43,8 +43,12 @@ def run_triage(
     *,
     client: Client,
     limit: int | None = None,
+    source_id: str | None = None,
 ) -> dict[str, int]:
     """Triage all un-triaged items (or first `limit`).
+
+    `source_id`: when set, only triage items from that source — used for
+    per-Pillar calibration runs.
 
     Returns a summary dict — counts of decisions by signal bucket + total cents.
     """
@@ -58,7 +62,7 @@ def run_triage(
         "total_cents": 0.0,
     }
 
-    items = storage.list_untriaged_items(limit=limit)
+    items = storage.list_untriaged_items(limit=limit, source_id=source_id)
     log.info("triage queue: %d items", len(items))
     if not items:
         return summary

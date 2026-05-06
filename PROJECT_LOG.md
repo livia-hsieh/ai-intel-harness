@@ -4,6 +4,10 @@
 
 > Claude Code writes here when it hits a strategic / judgment question. Livia brings these to Cowork to discuss with Claude. Resolved items get checked off and the decision recorded in the decisions log below.
 
+## Backlog (deferred, with explicit revisit triggers)
+
+- [ ] **JS-rendered article extraction (e.g. OpenAI archive)** — `enrich_excerpts` couldn't recover ~110 OpenAI archive pages because they're Next.js/React pages where `trafilatura` sees only the empty SPA shell. **Decision: defer**, since (a) those are 2017–2024 archive items, never enter Pulse anyway (incremental cursor cuts pre-30-day items); (b) NEW OpenAI items via RSS now use `fetch_excerpt` fallback so future-incoming items work. **Revisit trigger**: when `collect` picks up a JS-rendered source and triage shows that source's high-signal items consistently NULL-excerpt for 2 consecutive weeks. **Fix at that point**: 30-line Wayback Machine fallback (`https://web.archive.org/web/0/<url>` — usually has rendered snapshot, no Chromium dep needed). Headless browser (Playwright + 200MB Chromium) is overkill and not worth the complexity.
+
 - [x] 2026-05-04 [delivery] Digest 交付管道選哪個？— resolved: GitHub repo markdown (主) + email 連結通知 (輔)
 - [x] 2026-05-04 [visual format] Mermaid vs SVG vs PNG 何時用哪個？— resolved: 規則表已寫入 CLAUDE.md
 - [x] 2026-05-04 [github] Repo 名字 + 帳號歸屬?— resolved: `livia-hsieh/ai-intel-harness`
@@ -110,6 +114,39 @@ Status values: `pending` / `in_progress` / `completed` / `blocked`.
 ---
 
 ## Session log
+
+### Session 7 — 2026-05-06 — Excerpt enrichment + meta-loop health monitor
+
+**Problem caught (Livia's pushback):** Earlier "fix" for Anthropic engineering items having NULL excerpts was a triage prompt change ("score from title alone if title is informative"). That moved the problem instead of solving it — Pulse layer hit the same root cause when it tried to synthesize. Inconsistent logic.
+
+**Root fix:**
+- New `collector/extract.py` — single responsibility: given URL, return article body's first 500 chars. Uses `trafilatura` (de-facto Python content-extraction library, ~90% success on news/blog HTML).
+- `collector/fetchers/scrape.py` — calls `fetch_excerpt` for each yielded item; also added `_looks_like_nav_link` filter to drop site nav / footer / legal links pre-DB.
+- `collector/fetchers/rss.py` — calls `fetch_excerpt` when RSS entry has no summary (RSS feeds without summaries are rare but real).
+- `collector/enrich_excerpts.py` — one-shot back-fill for items already in DB with NULL excerpt. Idempotent. Resets triage state on items where extraction succeeded so the next `triage` run re-evaluates with the new content.
+
+**Enrich smoke test (208 NULL-excerpt items):** 81 extracted (39%) · 127 still failed (61% — mostly old OpenAI archive on JS-rendered pages) · 37 triage states reset · 232s elapsed.
+
+**Meta-loop health monitor (the bigger ask):**
+- New `monitor/` module: `triggers.py` (catalog of named alert rules) + `health.py` (assemble state from DB + cost log) + `run.py` (CLI).
+- `health` command computes per-source extract success rate, per-source cadence, scrape fallback dominance, triage distribution, score-compression detection, per-Pillar high-signal counts, weekly cost trend.
+- Output: console + `data/health_latest.md` (committed to repo as portfolio evidence) + `data/health_log.jsonl` (per-run history, gitignored).
+- First run **auto-detected the score-compression issue** Livia and I had been manually noticing — proves the monitor pattern works.
+
+**Tasks completed this session:**
+- ✅ Collector excerpt extraction (root fix)
+- ✅ Enrich one-shot back-fill
+- ✅ Health monitor v0.1 (3 collector triggers, 2 triage triggers, 1 cost trigger)
+
+**Anti-patterns NOT introduced (extending list):**
+11. ❌ Did not band-aid the excerpt issue with another prompt tweak. Root fix in collector instead.
+12. ❌ Did not build headless-browser extraction for JS pages. Wayback fallback (~30 lines) is the right complexity-vs-coverage trade-off when the time comes — recorded in backlog with explicit revisit trigger.
+13. ❌ Did not pre-build all triggers anyone can think of. Started with 6 high-value triggers (the patterns we already hit). New triggers accumulate when silent failures surprise us — every surprise becomes a permanent trigger.
+
+**Pending Cowork question (open):**
+- The triage_pillar_thin trigger uses raw-count threshold (`<2 high-signal`). For backlog data spanning years this is meaningless; it should be weekly-windowed. Defer until we have ≥4 weeks of weekly-cadence data; revisit threshold then.
+
+---
 
 ### Session 6 — 2026-05-04 — Synthesizer triage layer (Task #4, part 1/3)
 

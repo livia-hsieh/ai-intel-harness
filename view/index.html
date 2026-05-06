@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>賣法 Playbook</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      margin: 0;
+      background: #f5f7fa;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+    header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+      color: white;
+      padding: 1.5rem 2rem;
+    }
+    header h1 { margin: 0; font-size: 1.5rem; }
+    header .meta { font-size: 0.85rem; opacity: 0.85; margin-top: 0.3rem; }
+    nav { margin-top: 1rem; }
+    nav button {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 0.55rem 1.4rem;
+      border-radius: 0.4rem;
+      cursor: pointer;
+      margin-right: 0.5rem;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+    nav button:hover { background: rgba(255,255,255,0.2); }
+    nav button.active { background: white; color: #1d4ed8; font-weight: 600; }
+    main { max-width: 1180px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .hero {
+      background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
+      color: white;
+      padding: 1.8rem 2rem;
+      border-radius: 0.8rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+    }
+    .hero .one-liner {
+      font-size: 1.2rem;
+      font-weight: 500;
+      line-height: 1.5;
+      margin-bottom: 0.6rem;
+    }
+    .hero .summary { font-size: 0.92rem; opacity: 0.9; }
+    section.block {
+      background: white;
+      padding: 1.5rem 1.7rem;
+      border-radius: 0.6rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    section.block h2 {
+      margin-top: 0;
+      color: #1e3a8a;
+      border-bottom: 2px solid #e0e7ff;
+      padding-bottom: 0.6rem;
+      font-size: 1.25rem;
+    }
+    section.block h3 {
+      color: #1e40af;
+      font-size: 1.05rem;
+      margin: 1.2rem 0 0.5rem;
+    }
+    .outcome-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 0.8rem;
+    }
+    .outcome-card {
+      border: 1.5px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 0.9rem 1rem;
+      transition: all 0.25s;
+      background: white;
+    }
+    .outcome-card:hover {
+      border-color: #93c5fd;
+      box-shadow: 0 2px 8px rgba(29, 78, 216, 0.12);
+      transform: translateY(-1px);
+    }
+    .outcome-card.recommended {
+      border-color: #1d4ed8;
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      box-shadow: 0 4px 16px rgba(29, 78, 216, 0.2);
+      transform: translateY(-2px);
+    }
+    .outcome-card .id {
+      font-size: 0.8rem;
+      color: #6b7280;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+    .outcome-card .name {
+      font-weight: 600;
+      font-size: 1.05rem;
+      margin: 0.25rem 0 0.4rem;
+      color: #1e3a8a;
+    }
+    .outcome-card .state {
+      font-size: 0.85rem;
+      color: #4b5563;
+      margin-bottom: 0.4rem;
+    }
+    .outcome-card .modules {
+      font-size: 0.82rem;
+      color: #374151;
+      background: #f9fafb;
+      padding: 0.3rem 0.5rem;
+      border-radius: 0.3rem;
+      margin-bottom: 0.4rem;
+    }
+    .outcome-card .scale {
+      font-size: 0.78rem;
+      color: #6b7280;
+    }
+    .outcome-card .warning {
+      font-size: 0.78rem;
+      color: #92400e;
+      background: #fef3c7;
+      padding: 0.3rem 0.5rem;
+      border-radius: 0.3rem;
+      margin-top: 0.4rem;
+      border-left: 3px solid #d97706;
+    }
+    .group {
+      margin-bottom: 1.4rem;
+      padding: 0.8rem 1rem;
+      background: #fafbfc;
+      border-radius: 0.5rem;
+      border-left: 4px solid #3b82f6;
+    }
+    .group-header {
+      font-weight: 600;
+      color: #1e3a8a;
+      font-size: 1rem;
+      margin-bottom: 0.3rem;
+    }
+    .group-desc {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-bottom: 0.7rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.4rem 0;
+      font-size: 0.9rem;
+      background: white;
+    }
+    table th, table td {
+      border: 1px solid #e5e7eb;
+      padding: 0.55rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    table th { background: #f3f4f6; font-weight: 600; color: #374151; }
+    table tr:hover td { background: #fafbfc; }
+    .signal-row {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 0.7rem;
+      padding: 0.5rem;
+      border-radius: 0.4rem;
+    }
+    .signal-row:hover { background: #fafbfc; }
+    .signal-name {
+      font-weight: 500;
+      color: #374151;
+      font-size: 0.95rem;
+    }
+    .signal-name .question {
+      display: block;
+      font-size: 0.78rem;
+      color: #6b7280;
+      font-weight: 400;
+      margin-top: 0.2rem;
+    }
+    .signal-buttons {
+      display: flex;
+      gap: 0.4rem;
+    }
+    .signal-btn {
+      flex: 1;
+      padding: 0.45rem 0.5rem;
+      background: white;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 0.35rem;
+      cursor: pointer;
+      font-size: 0.82rem;
+      text-align: left;
+      transition: all 0.18s;
+      color: #374151;
+    }
+    .signal-btn:hover { border-color: #93c5fd; }
+    .signal-btn.selected {
+      background: #1d4ed8;
+      color: white;
+      border-color: #1d4ed8;
+      font-weight: 500;
+    }
+    .signal-btn .level-label {
+      font-size: 0.7rem;
+      opacity: 0.7;
+      display: block;
+      margin-bottom: 0.15rem;
+    }
+    .recommendation-box {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border-left: 4px solid #1d4ed8;
+      padding: 1rem 1.2rem;
+      margin-top: 1rem;
+      border-radius: 0.4rem;
+    }
+    .recommendation-box .label {
+      font-size: 0.85rem;
+      color: #1e40af;
+      font-weight: 500;
+    }
+    .recommendation-box .result {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #1e3a8a;
+      margin: 0.3rem 0;
+    }
+    .recommendation-box .breakdown {
+      font-size: 0.85rem;
+      color: #4b5563;
+    }
+    .recommendation-box.empty { background: #f9fafb; border-color: #d1d5db; color: #9ca3af; }
+    .recommendation-box.empty .result { color: #6b7280; font-weight: 400; font-size: 1rem; }
+    .frame-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.8rem;
+    }
+    .frame-card {
+      border-left: 4px solid #3b82f6;
+      padding: 0.9rem 1rem;
+      background: #fafbfc;
+      border-radius: 0.4rem;
+    }
+    .frame-card.special {
+      border-color: #d97706;
+      background: #fef3c7;
+    }
+    .frame-card .name {
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+      color: #1e3a8a;
+      font-size: 0.98rem;
+    }
+    .frame-card.special .name { color: #92400e; }
+    .frame-card .story {
+      font-size: 0.86rem;
+      color: #374151;
+      margin-bottom: 0.4rem;
+    }
+    .frame-card .concern {
+      font-size: 0.8rem;
+      color: #6b7280;
+      font-style: italic;
+    }
+    .frame-card .special-note {
+      font-size: 0.8rem;
+      color: #92400e;
+      margin-top: 0.4rem;
+      padding-top: 0.4rem;
+      border-top: 1px dashed #d97706;
+    }
+    .warning-box {
+      background: #fef3c7;
+      border-left: 4px solid #d97706;
+      padding: 0.9rem 1.1rem;
+      margin: 1rem 0;
+      border-radius: 0.4rem;
+      font-size: 0.9rem;
+      color: #78350f;
+    }
+    .example-row {
+      padding: 0.7rem 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .example-row:last-child { border-bottom: none; }
+    .example-row .client {
+      font-weight: 600;
+      color: #1e3a8a;
+      font-size: 1rem;
+    }
+    .example-row .meta {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin: 0.3rem 0;
+    }
+    .example-row .meta .tag {
+      display: inline-block;
+      background: #e0e7ff;
+      color: #1e40af;
+      padding: 0.1rem 0.5rem;
+      border-radius: 0.3rem;
+      font-size: 0.75rem;
+      margin-right: 0.3rem;
+    }
+    .example-row .storyline {
+      font-size: 0.9rem;
+      color: #374151;
+      margin-top: 0.3rem;
+    }
+    .example-controls {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+    .example-controls select {
+      padding: 0.4rem 0.6rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.3rem;
+      font-size: 0.9rem;
+    }
+    .reset-btn {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      padding: 0.4rem 0.8rem;
+      border-radius: 0.3rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: #4b5563;
+    }
+    .reset-btn:hover { background: #e5e7eb; }
+    @media (max-width: 768px) {
+      .signal-row { grid-template-columns: 1fr; }
+      main { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>賣法 Playbook</h1>
+    <div class="meta">底層 raw data 在 config_*.js — 改字串就更新展示，不用動 HTML</div>
+    <nav>
+      <button id="tab-gov" class="active">AI Governance</button>
+      <button id="tab-as">AI at Scale</button>
+    </nav>
+  </header>
+
+  <main id="content"></main>
+
+  <script src="config_governance.js"></script>
+  <script src="config_at_scale.js"></script>
+  <script>
+    let currentTab = 'gov';
+    let signalState = {};
+    const configs = { gov: govConfig, as: scaleConfig };
+
+    function activeConfig() { return configs[currentTab]; }
+
+    function frameById(id) {
+      return activeConfig().frames.find(f => f.id === id);
+    }
+
+    function clientForOutcomeId(id) {
+      return activeConfig().outcomes.find(o => o.id === id);
+    }
+
+    function render() {
+      const c = activeConfig();
+      const main = document.getElementById('content');
+      main.innerHTML = `
+        ${renderHero(c)}
+        ${renderOutcomes(c)}
+        ${renderEntryPaths(c)}
+        ${renderDecisionTree(c)}
+        ${renderFrames(c)}
+        ${renderSophistication(c)}
+        ${renderExamples(c)}
+        ${renderDrillDown(c)}
+      `;
+      attachInteractions();
+    }
+
+    function renderHero(c) {
+      return `
+        <div class="hero">
+          <div class="one-liner">${c.meta.core_one_liner}</div>
+          <div class="summary">${c.meta.summary || ''}</div>
+          ${c.meta.note ? `<div class="summary" style="margin-top:0.5rem;font-size:0.82rem;opacity:0.8;">⚠️ ${c.meta.note}</div>` : ''}
+        </div>
+      `;
+    }
+
+    function renderOutcomes(c) {
+      const cards = c.outcomes.map(o => `
+        <div class="outcome-card" data-outcome="${o.id}">
+          <div class="id">${o.id}${o.maturity_label ? ' · ' + o.maturity_label : ''}</div>
+          <div class="name">${o.name}</div>
+          ${o.client_state ? `<div class="state">${o.client_state}</div>` : ''}
+          ${o.sub_label ? `<div class="state">${o.sub_label}</div>` : ''}
+          <div class="modules">${o.key_modules}</div>
+          <div class="scale">${o.scale}</div>
+          ${o.warning ? `<div class="warning">⚠️ ${o.warning}</div>` : ''}
+        </div>
+      `).join('');
+      return `
+        <section class="block">
+          <h2>可賣套餐</h2>
+          <div class="outcome-grid">${cards}</div>
+        </section>
+      `;
+    }
+
+    function renderEntryPaths(c) {
+      const groups = c.entry_paths.map(g => {
+        const rows = g.paths.map(p => {
+          const frame = frameById(p.frame_id);
+          return `
+            <tr>
+              <td><strong>${p.name}</strong></td>
+              <td>${p.window}</td>
+              <td>${frame ? frame.name : '—'}</td>
+              <td>${p.default_outcome || '—'}</td>
+              <td>「${p.opening_hook}」</td>
+            </tr>
+          `;
+        }).join('');
+        return `
+          <div class="group">
+            <div class="group-header">${g.group_id}. ${g.group_name}</div>
+            <div class="group-desc">${g.group_desc}</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>進案路徑</th>
+                  <th>主窗口</th>
+                  <th>Frame</th>
+                  <th>默認套餐</th>
+                  <th>開場 hook</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }).join('');
+      return `
+        <section class="block">
+          <h2>進案路徑（觸發點 + 窗口 → Frame + 開場一條龍）</h2>
+          ${groups}
+        </section>
+      `;
+    }
+
+    function renderDecisionTree(c) {
+      if (!c.decision_signals || c.decision_signals.length === 0) {
+        return `
+          <section class="block">
+            <h2>決策樹（套餐推薦工具）</h2>
+            <div class="warning-box">此份 config 暫無 decision_signals。</div>
+          </section>
+        `;
+      }
+      const signalRows = c.decision_signals.map(s => {
+        const buttons = Object.entries(s.values).map(([level, label]) => `
+          <button class="signal-btn" data-signal="${s.id}" data-level="${level}">
+            <span class="level-label">${level === 'low' ? '低成熟' : level === 'mid' ? '中成熟' : '高成熟'}</span>
+            ${label}
+          </button>
+        `).join('');
+        return `
+          <div class="signal-row">
+            <div class="signal-name">
+              ${s.name}
+              <span class="question">問：${s.interview_question}</span>
+            </div>
+            <div class="signal-buttons">${buttons}</div>
+          </div>
+        `;
+      }).join('');
+      const quickBranchHtml = (c.signal_to_outcome && c.signal_to_outcome.quick_branches) ? `
+        <h3>快速分支</h3>
+        <table>
+          <thead><tr><th>條件</th><th>套餐</th><th>備註</th></tr></thead>
+          <tbody>
+            ${c.signal_to_outcome.quick_branches.map(qb => `
+              <tr><td>${qb.condition}</td><td><strong>${qb.outcome}</strong></td><td>${qb.note}</td></tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : '';
+      return `
+        <section class="block">
+          <h2>決策樹一：用 5 訊號反推套餐（互動）</h2>
+          <p style="font-size:0.9rem;color:#4b5563;margin-bottom:1rem;">
+            ⭐ <strong>不要問客戶自答</strong>——以下 5 個訊號從 IBM 訪談中外部觀察。多數落哪欄就推那個套餐。
+          </p>
+          ${signalRows}
+          <button class="reset-btn" onclick="resetSignals()" style="margin-top:0.5rem;">重設</button>
+          <div id="recommendation" class="recommendation-box empty">
+            <div class="label">推薦套餐</div>
+            <div class="result">（請選擇所有訊號）</div>
+          </div>
+          ${quickBranchHtml}
+        </section>
+      `;
+    }
+
+    function renderFrames(c) {
+      const cards = c.frames.map(f => `
+        <div class="frame-card${f.is_special ? ' special' : ''}">
+          <div class="name">${f.name}${f.is_special ? ' ⭐' : ''}</div>
+          <div class="story">${f.core_story}</div>
+          <div class="concern">客戶腦中關切：${f.client_concern}</div>
+          ${f.special_note ? `<div class="special-note">⚠️ ${f.special_note}</div>` : ''}
+        </div>
+      `).join('');
+      return `
+        <section class="block">
+          <h2>Frame 鋪陳內涵</h2>
+          <p style="font-size:0.9rem;color:#4b5563;margin-bottom:1rem;">
+            重點不是用詞，是<strong>鋪陳的內涵</strong>。同 Frame 同套餐核心故事一樣，跨 Frame 故事完全不同。
+          </p>
+          <div class="frame-grid">${cards}</div>
+        </section>
+      `;
+    }
+
+    function renderSophistication(c) {
+      if (!c.sophistication_levels) return '';
+      const rows = c.sophistication_levels.map(l => `
+        <tr>
+          <td><strong>${l.label}</strong></td>
+          <td>${l.packaging}</td>
+          <td><em>${l.example}</em></td>
+          <td style="font-size:0.82rem;color:#6b7280;">${l.detection || '—'}</td>
+        </tr>
+      `).join('');
+      return `
+        <section class="block">
+          <h2>客戶程度（sophistication）→ 包裝深淺</h2>
+          <table>
+            <thead><tr><th>程度</th><th>包裝方式</th><th>範例</th><th>判斷訊號</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </section>
+      `;
+    }
+
+    function renderExamples(c) {
+      if (!c.outcome_examples || c.outcome_examples.length === 0) return '';
+      const opts = c.outcome_examples.map(oe => {
+        const o = clientForOutcomeId(oe.outcome_id);
+        return `<option value="${oe.outcome_id}">${oe.outcome_id} ${o ? o.name : ''}</option>`;
+      }).join('');
+      const firstId = c.outcome_examples[0].outcome_id;
+      return `
+        <section class="block">
+          <h2>同套餐對不同客戶（範例）</h2>
+          <div class="example-controls">
+            <span>選套餐：</span>
+            <select id="example-selector">${opts}</select>
+          </div>
+          <div id="example-rows">${renderExampleRows(c, firstId)}</div>
+        </section>
+      `;
+    }
+
+    function renderExampleRows(c, outcomeId) {
+      const oe = c.outcome_examples.find(x => x.outcome_id === outcomeId);
+      if (!oe) return '';
+      return oe.examples.map(ex => {
+        const frame = frameById(ex.frame_id);
+        return `
+          <div class="example-row">
+            <div class="client">${ex.client}</div>
+            <div class="meta">
+              <span class="tag">嘴上說：${ex.client_says}</span>
+              <span class="tag">Frame：${frame ? frame.name : ex.frame_id}</span>
+              <span class="tag">程度：${ex.sophistication}</span>
+            </div>
+            <div class="storyline">${ex.opening_storyline}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderDrillDown(c) {
+      if (!c.drill_down_questions) return '';
+      const rows = c.drill_down_questions.map(q => `
+        <tr>
+          <td>${q.question}</td>
+          <td style="color:#065f46;">✓ ${q.answerable}</td>
+          <td style="color:#9a3412;">✗ ${q.unanswerable}</td>
+        </tr>
+      `).join('');
+      return `
+        <section class="block">
+          <h2>抽絲剝繭問句（GV-D 警告）</h2>
+          <div class="warning-box">
+            純工具買賣（GV-D）對 IBM Consulting <strong>沒大贏面</strong>——沒人月、沒 OM 導入、沒後續案，license 分成是 Software 拿。
+            <strong>GV-D 是 fallback 不是 default</strong>。客戶說「要工具」時應該先抽絲剝繭主動往上推。
+          </div>
+          <table>
+            <thead><tr><th>追問問題</th><th>答得出來 →</th><th>答不出來 →</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </section>
+      `;
+    }
+
+    // ====== 互動 ======
+    function attachInteractions() {
+      document.querySelectorAll('.signal-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const signal = btn.dataset.signal;
+          const level = btn.dataset.level;
+          signalState[signal] = level;
+          // unselect siblings
+          btn.parentElement.querySelectorAll('.signal-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          computeRecommendation();
+        });
+      });
+
+      const selector = document.getElementById('example-selector');
+      if (selector) {
+        selector.addEventListener('change', e => {
+          document.getElementById('example-rows').innerHTML = renderExampleRows(activeConfig(), e.target.value);
+        });
+      }
+    }
+
+    function resetSignals() {
+      signalState = {};
+      document.querySelectorAll('.signal-btn.selected').forEach(b => b.classList.remove('selected'));
+      const box = document.getElementById('recommendation');
+      box.className = 'recommendation-box empty';
+      box.innerHTML = `<div class="label">推薦套餐</div><div class="result">（請選擇所有訊號）</div>`;
+      document.querySelectorAll('.outcome-card.recommended').forEach(c => c.classList.remove('recommended'));
+    }
+
+    function computeRecommendation() {
+      const c = activeConfig();
+      const signalsCount = c.decision_signals.length;
+      const values = Object.values(signalState);
+      if (values.length < signalsCount) {
+        const box = document.getElementById('recommendation');
+        box.className = 'recommendation-box empty';
+        box.innerHTML = `<div class="label">推薦套餐</div><div class="result">（已選 ${values.length}/${signalsCount} 訊號）</div>`;
+        return;
+      }
+      const counts = { low: 0, mid: 0, high: 0 };
+      values.forEach(v => counts[v]++);
+      const max = Math.max(counts.low, counts.mid, counts.high);
+      let dominantLevel;
+      if (counts.high === max) dominantLevel = 'high';
+      else if (counts.mid === max) dominantLevel = 'mid';
+      else dominantLevel = 'low';
+      const outcomeId = c.signal_to_outcome ? c.signal_to_outcome.mappings[dominantLevel] : null;
+      const outcome = outcomeId ? clientForOutcomeId(outcomeId) : null;
+
+      const box = document.getElementById('recommendation');
+      box.className = 'recommendation-box';
+      box.innerHTML = `
+        <div class="label">推薦套餐</div>
+        <div class="result">${outcome ? outcome.id + ' ' + outcome.name : '（無對應）'}</div>
+        <div class="breakdown">訊號分布：低成熟=${counts.low} / 中成熟=${counts.mid} / 高成熟=${counts.high}</div>
+      `;
+      // 高亮對應 outcome card
+      document.querySelectorAll('.outcome-card.recommended').forEach(c => c.classList.remove('recommended'));
+      if (outcome) {
+        const card = document.querySelector(`.outcome-card[data-outcome="${outcome.id}"]`);
+        if (card) card.classList.add('recommended');
+      }
+    }
+
+    // ====== Tab 切換 ======
+    document.getElementById('tab-gov').addEventListener('click', () => {
+      currentTab = 'gov';
+      document.getElementById('tab-gov').classList.add('active');
+      document.getElementById('tab-as').classList.remove('active');
+      signalState = {};
+      render();
+    });
+    document.getElementById('tab-as').addEventListener('click', () => {
+      currentTab = 'as';
+      document.getElementById('tab-as').classList.add('active');
+      document.getElementById('tab-gov').classList.remove('active');
+      signalState = {};
+      render();
+    });
+
+    // 初始 render
+    render();
+  </script>
+</body>
+</html>

@@ -26,6 +26,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from collector.config import Channel, Source
+from collector.extract import fetch_excerpt
 from collector.fetchers.rss import USER_AGENT, FetchError, fetch_rss
 from collector.storage import Item
 
@@ -135,20 +136,47 @@ def _scrape_article_list(source: Source, page_url: str) -> Iterator[Item]:
         title = a.get_text(strip=True) or None
         if not title or len(title) < 10:
             continue
+        if _looks_like_nav_link(title):
+            # Filter out site nav / footer / legal links that aren't articles.
+            # Cheap to drop here: avoids polluting DB + wasting downstream
+            # excerpt-fetch HTTP requests + Haiku triage cents.
+            continue
+
+        # Eager-fetch each article's body so triage / Pulse have real signal,
+        # not just title + URL. Fail-soft: if extraction returns None, the
+        # item still goes in (caller can mark scaffolding_note later).
+        excerpt = fetch_excerpt(link)
 
         yield Item(
             source_id=source.id,
             url=link,
             title=title,
-            excerpt=None,
+            excerpt=excerpt,
             published_at=None,
             pillar_tags=source.pillar_tags,
             raw_size_bytes=len(str(a)),
+            scaffolding_note=None if excerpt else "excerpt_extraction_failed",
         )
         yielded += 1
 
     if yielded == 0:
         raise FetchError(f"scrape found no article links at {page_url}")
+
+
+_NAV_TITLE_PATTERNS = (
+    "skip to ", "see open", "subscribe", "sign in", "log in", "log out",
+    "privacy policy", "terms of service", "cookie", "contact", "careers",
+    "about us", "newsletter signup",
+)
+
+
+def _looks_like_nav_link(title: str) -> bool:
+    t = title.lower().strip()
+    if any(p in t for p in _NAV_TITLE_PATTERNS):
+        return True
+    if len(t.split()) < 2:  # single-word "Availability", "Transparency", etc
+        return True
+    return False
 
 
 def _looks_like_article(url: str, page_host: str) -> bool:

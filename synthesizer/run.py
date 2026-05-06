@@ -43,8 +43,14 @@ def main(argv: list[str] | None = None) -> int:
     sources = load_sources_indexed(args.sources)
     log.info("loaded %d sources", len(sources))
 
+    if args.source and args.source not in sources:
+        log.error("source id %r not in sources.yaml", args.source)
+        return 2
+
     client = Client(cost_log_path=args.cost_log, dry_run=args.dry_run)
-    summary = run_triage(storage, sources, client=client, limit=args.limit)
+    summary = run_triage(
+        storage, sources, client=client, limit=args.limit, source_id=args.source
+    )
     _print_summary(summary, dry_run=args.dry_run)
     return 0
 
@@ -72,6 +78,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     p.add_argument("--sources", type=Path, default=DEFAULT_SOURCES_PATH)
     p.add_argument("--cost-log", type=Path, default=DEFAULT_COST_LOG)
     p.add_argument("--limit", type=int, help="Triage at most this many items")
+    p.add_argument(
+        "--source",
+        type=str,
+        help="Only triage items from this source id (per-Pillar calibration runs)",
+    )
     p.add_argument("--dry-run", action="store_true", help="No API calls; estimate cost only")
     p.add_argument("--verbose", "-v", action="store_true")
     return p.parse_args(argv)
