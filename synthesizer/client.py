@@ -54,10 +54,28 @@ class NoAPIKeyError(RuntimeError):
     """Raised when an LLM call is attempted without ANTHROPIC_API_KEY set."""
 
 
+class CostCircuitBreakerError(RuntimeError):
+    """Raised when a Sonnet/Opus call would exceed the configured budget."""
+
+
 class Client:
-    def __init__(self, cost_log_path: Path | None = None, dry_run: bool = False):
+    def __init__(self, cost_log_path: Path | None = None, dry_run: bool = False,
+                 hard_cap_usd: float = 5.0, soft_warn_usd: float = 4.0):
+        """Anthropic client wrapper with cost circuit breaker.
+
+        `hard_cap_usd`: cumulative cost of THIS process; once exceeded, all
+            further calls raise CostCircuitBreakerError. Default $5 matches
+            SCOPE.md §9 weekly alarm.
+        `soft_warn_usd`: log a warning at this threshold before hard cap.
+
+        Set hard_cap_usd very high (e.g., 100) for long backfill operations,
+        but normal weekly runs should keep the default to prevent runaway.
+        """
         self.dry_run = dry_run
         self.cost_log_path = cost_log_path
+        self.hard_cap_usd = hard_cap_usd
+        self.soft_warn_usd = soft_warn_usd
+        self._cumulative_cents = 0.0
         self._client = None  # lazy init so dry-run never imports SDK
 
     def _ensure_client(self):
@@ -106,6 +124,22 @@ class Client:
         else:
             system_param = system
 
+        # Pre-call circuit breaker check.
+        cumulative_usd = self._cumulative_cents / 100
+        if cumulative_usd >= self.hard_cap_usd:
+            raise CostCircuitBreakerError(
+                f"Cumulative cost ${cumulative_usd:.4f} reached hard cap "
+                f"${self.hard_cap_usd:.2f} — refusing further calls. "
+                f"Raise hard_cap_usd to override (only for backfill ops)."
+            )
+        if cumulative_usd >= self.soft_warn_usd and cumulative_usd < self.hard_cap_usd:
+            import logging
+            logging.getLogger("client").warning(
+                "🟡 Cost soft-warn: ${cumulative:.4f} of ${cap:.2f} cap "
+                "— next call may push over. Consider abort.",
+                extra={"cumulative": cumulative_usd, "cap": self.hard_cap_usd},
+            )
+
         if self.dry_run:
             est_input = _rough_token_estimate(system_param, messages)
             cents = _cents_for(model, est_input, 0, 0, max_tokens)
@@ -120,6 +154,7 @@ class Client:
                 purpose=purpose,
             )
             self._log(result, dry_run=True)
+            # don't tick cumulative for dry-runs — they didn't actually spend
             return result
 
         sdk = self._ensure_client()
@@ -149,6 +184,7 @@ class Client:
             purpose=purpose,
         )
         self._log(result, dry_run=False)
+        self._cumulative_cents += cents
         return result
 
     def _log(self, r: CallResult, *, dry_run: bool) -> None:

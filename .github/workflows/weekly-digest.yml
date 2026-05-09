@@ -1,0 +1,172 @@
+name: Weekly AI Intel Digest
+
+# Friday 06:00 Asia/Taipei = Thursday 22:00 UTC
+on:
+  schedule:
+    - cron: "0 22 * * 4"
+  workflow_dispatch:  # allow manual trigger from GitHub UI
+
+permissions:
+  contents: write  # needed to commit the digest back
+
+concurrency:
+  group: weekly-digest
+  cancel-in-progress: false  # one run at a time, don't cancel mid-run
+
+jobs:
+  generate-digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check kill switch
+        run: |
+          if [[ "${{ vars.PIPELINE_DISABLED }}" == "1" ]]; then
+            echo "🛑 Pipeline is disabled (PIPELINE_DISABLED repo variable = 1)"
+            echo "Set repo variable PIPELINE_DISABLED to 0 (or unset) to re-enable."
+            exit 0
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install package
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+
+      - name: Compute week label
+        id: week
+        run: |
+          WEEK=$(date -u +"%Y-W%V")
+          echo "label=$WEEK" >> $GITHUB_OUTPUT
+          echo "Computed week label: $WEEK"
+
+      - name: Pre-run cost check
+        env:
+          PIPELINE_BUDGET_USD: "5"
+        run: |
+          python -c "
+          import json, os, sys
+          from datetime import datetime, timedelta, timezone
+          path = 'data/cost_log.jsonl'
+          if not os.path.exists(path):
+              print('No cost log yet — proceeding'); sys.exit(0)
+          cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+          total = 0.0
+          with open(path) as f:
+              for line in f:
+                  try:
+                      r = json.loads(line)
+                      if r.get('dry_run'): continue
+                      if r.get('ts','') > cutoff:
+                          total += r.get('cents', 0)
+                  except: pass
+          usd = total / 100
+          budget = float(os.environ.get('PIPELINE_BUDGET_USD', '5'))
+          print(f'Last 7 days spend: \${usd:.4f} / budget \${budget:.2f}')
+          if usd > budget * 0.8:
+              print(f'🟡 Already at {usd/budget:.0%} of weekly budget — proceeding but monitor')
+          if usd > budget:
+              print(f'🔴 Already exceeded weekly budget — aborting to prevent runaway spend')
+              sys.exit(1)
+          "
+
+      - name: Run collect
+        run: |
+          collect 2>&1 | tail -50
+          echo "✅ collect complete"
+
+      - name: Run triage
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [[ -z "$ANTHROPIC_API_KEY" ]]; then
+            echo "❌ ANTHROPIC_API_KEY secret not set — aborting"
+            exit 1
+          fi
+          triage 2>&1 | tail -30
+          echo "✅ triage complete"
+
+      - name: Run pulse (5 Pillars)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          pulse --all > /tmp/pulse_all.md 2>&1
+          echo "✅ pulse complete"
+          tail -10 /tmp/pulse_all.md
+
+      - name: Run foundation (curriculum-rotated)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          foundation --week ${{ steps.week.outputs.label }} --write 2>&1 | tail -10
+          echo "✅ foundation complete"
+
+      - name: Assemble digest
+        run: |
+          assemble-digest -i /tmp/pulse_all.md --week ${{ steps.week.outputs.label }} 2>&1 | tail -3
+          echo "✅ digest assembled"
+
+      - name: Run health check
+        run: |
+          health 2>&1 | tail -3
+          echo "✅ health check complete"
+
+      - name: Commit and push digest
+        run: |
+          git config user.name "ai-intel-pipeline-bot"
+          git config user.email "yixindear@gmail.com"
+          git add digests/ data/health_latest.md
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Weekly digest ${{ steps.week.outputs.label }} (auto-generated)"
+            git push
+            echo "✅ digest committed + pushed"
+          fi
+
+      - name: Send notification email
+        if: success()
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+        run: |
+          if [[ -z "$SMTP_USER" || -z "$NOTIFY_EMAIL" ]]; then
+            echo "📧 Email not configured (SMTP_USER / NOTIFY_EMAIL secrets missing); skipping notification"
+            exit 0
+          fi
+          python -m delivery.notify \
+            --week "${{ steps.week.outputs.label }}" \
+            --status success \
+            --repo "${{ github.repository }}"
+
+      - name: Send failure email
+        if: failure()
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+        run: |
+          if [[ -z "$SMTP_USER" || -z "$NOTIFY_EMAIL" ]]; then
+            echo "📧 Email not configured; skipping failure notification"
+            exit 0
+          fi
+          python -m delivery.notify \
+            --week "${{ steps.week.outputs.label }}" \
+            --status failure \
+            --repo "${{ github.repository }}" \
+            --run-id "${{ github.run_id }}"
