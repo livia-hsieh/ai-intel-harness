@@ -1,0 +1,173 @@
+name: Quarterly Harness Eng Synthesis
+
+# Triggers 4 times a year on the 25th of March / June / September / December.
+# That date falls in the 12th week of each quarter — by then a full B→G
+# curriculum cycle of weekly Foundation deep-reads has accumulated.
+# 22:00 UTC = 06:00 next day in Asia/Taipei.
+on:
+  schedule:
+    - cron: "0 22 25 3,6,9,12 *"
+  workflow_dispatch:  # manual trigger any time
+    inputs:
+      quarter:
+        description: "Quarter label (e.g. Q1-2026). Leave blank to auto-derive."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: quarterly-synthesis
+  cancel-in-progress: false
+
+jobs:
+  synthesize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check kill switch
+        run: |
+          if [[ "${{ vars.PIPELINE_DISABLED }}" == "1" ]]; then
+            echo "🛑 Pipeline disabled — skipping quarterly synthesis"
+            exit 0
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install package
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+
+      - name: Determine quarter label
+        id: quarter
+        run: |
+          if [[ -n "${{ inputs.quarter }}" ]]; then
+            QUARTER="${{ inputs.quarter }}"
+          else
+            # Compute Qx-YYYY from current ISO week
+            WEEK=$(date -u +%V)
+            YEAR=$(date -u +%Y)
+            if (( WEEK <= 13 )); then Q=Q1
+            elif (( WEEK <= 26 )); then Q=Q2
+            elif (( WEEK <= 39 )); then Q=Q3
+            else Q=Q4
+            fi
+            QUARTER="${Q}-${YEAR}"
+          fi
+          echo "label=$QUARTER" >> $GITHUB_OUTPUT
+          echo "Computed quarter: $QUARTER"
+
+      - name: Mirror Track essays from digests/ to a temp wiki path
+        # Quarterly reads Track essays from <wiki_root>/concepts/. On GitHub
+        # Actions the user's local OneDrive wiki isn't reachable, so we mirror
+        # the foundation outputs from digests/<week>/foundation.md into a
+        # synthetic wiki tree under data/wiki-mirror/concepts/track-X.md.
+        # This way the runner can synthesize even though wiki sync is local-only.
+        run: |
+          mkdir -p data/wiki-mirror/concepts
+          # For each track A-G, find the most recent foundation.md that mentions
+          # "Track <X>" in its header and copy it as track-<x>.md
+          for TRACK in B C D E F G; do
+            LATEST=$(grep -lr "Track ${TRACK}:" digests/*/foundation.md 2>/dev/null | tail -1)
+            if [[ -n "$LATEST" ]]; then
+              cp "$LATEST" "data/wiki-mirror/concepts/track-$(echo $TRACK | tr A-Z a-z).md"
+              echo "Mirrored Track $TRACK from $LATEST"
+            else
+              echo "No foundation.md found for Track $TRACK yet — quarterly will note partial coverage"
+            fi
+          done
+
+      - name: Run quarterly synthesis
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [[ -z "$ANTHROPIC_API_KEY" ]]; then
+            echo "❌ ANTHROPIC_API_KEY secret missing — aborting"
+            exit 1
+          fi
+          synthesize-quarter \
+            --quarter "${{ steps.quarter.outputs.label }}" \
+            --wiki-root data/wiki-mirror \
+            --write 2>&1 | tail -20
+
+      - name: Move synthesis to repo-canonical path
+        # synthesize-quarter wrote to data/wiki-mirror/perspectives/...
+        # Move to digests/perspectives/ so it's prominently in the repo.
+        run: |
+          QUARTER_LOWER=$(echo "${{ steps.quarter.outputs.label }}" | tr A-Z a-z)
+          SRC="data/wiki-mirror/perspectives/harness-engineering-${QUARTER_LOWER}.md"
+          DST_DIR="digests/perspectives"
+          mkdir -p "$DST_DIR"
+          if [[ -f "$SRC" ]]; then
+            cp "$SRC" "$DST_DIR/harness-engineering-${QUARTER_LOWER}.md"
+            echo "✅ Synthesis at $DST_DIR/harness-engineering-${QUARTER_LOWER}.md"
+          else
+            echo "⚠️  Synthesis file not found at $SRC"
+          fi
+
+      - name: Commit and push
+        run: |
+          git config user.name "ai-intel-pipeline-bot"
+          git config user.email "yixindear@gmail.com"
+          git add digests/perspectives/ data/cost_log.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Quarterly synthesis ${{ steps.quarter.outputs.label }} (auto-generated)"
+            git push
+            echo "✅ Committed and pushed"
+          fi
+
+      - name: Send notification email
+        if: success()
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+        run: |
+          if [[ -z "$SMTP_USER" || -z "$NOTIFY_EMAIL" ]]; then
+            echo "📧 Email not configured; skipping"
+            exit 0
+          fi
+          QUARTER="${{ steps.quarter.outputs.label }}"
+          QUARTER_LOWER=$(echo "$QUARTER" | tr A-Z a-z)
+          URL="https://github.com/${{ github.repository }}/blob/main/digests/perspectives/harness-engineering-${QUARTER_LOWER}.md"
+          python -c "
+          import os, smtplib
+          from email.message import EmailMessage
+          msg = EmailMessage()
+          msg['Subject'] = f'[AI Intel] $QUARTER 整合視角 ready'
+          msg['From'] = os.environ['SMTP_USER']
+          msg['To'] = os.environ['NOTIFY_EMAIL']
+          msg.set_content(
+              f'本季 (${QUARTER}) Harness Engineering 整合視角已產生。\n\n'
+              f'閱讀連結：\n$URL\n\n'
+              f'這是過去 12 週 6 個 Foundation Track + 高分 items 的橫向整合，'
+              f'寫進 wiki/perspectives/。Portfolio 重磅內容。\n\n'
+              f'建議讀法：\n'
+              f'1. 先看 5 大整合性洞察（繁中）\n'
+              f'2. 跨 Track 張力 + 視覺圖（這是這份文件的精華）\n'
+              f'3. 最後看 portfolio implications — 直接列下季要寫的 design notes\n'
+              f'\n'
+              f'下次自動產生：下一季的 25 號 (3/25, 6/25, 9/25, 12/25)。'
+          )
+          with smtplib.SMTP(os.environ['SMTP_HOST'], int(os.environ.get('SMTP_PORT','587'))) as s:
+              s.starttls()
+              s.login(os.environ['SMTP_USER'], os.environ['SMTP_PASS'])
+              s.send_message(msg)
+          print('✅ Email sent')
+          "
