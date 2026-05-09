@@ -53,13 +53,16 @@ def run_pulse(
     client: Client,
     min_signal: float = 0.6,
     published_after: str | None = None,
-    max_items: int | None = None,
+    max_items: int | None = 40,
 ) -> PulseResult:
     """Synthesize Pulse for one Pillar.
 
-    `max_items`: hard cap (defensive — if a Pillar accumulates 100+ items,
-    we'd blow the input budget). Default None = no cap (assume signal floor
-    + week filter keep the count manageable).
+    `max_items` default 40: Pillar 4 backlog has 760 items which blows past
+    Sonnet's 30K input-tokens-per-minute org rate limit. 40 highest-signal
+    items keep us within rate limits + give Sonnet enough breadth to pick
+    real Top 3 with a healthy Watch list. Items are pre-sorted by
+    triage_signal DESC inside list_high_signal_items_for_pillar so we keep
+    the best 40, not arbitrary 40.
     """
     if pillar_n not in PILLAR_NAMES:
         raise ValueError(f"unknown pillar {pillar_n}")
