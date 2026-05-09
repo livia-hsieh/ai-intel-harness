@@ -104,7 +104,7 @@ Established 2026-05-06 (Session 7) after Livia called out rush-forward / regress
 | Phase | DONE criteria | Gate | Current status |
 |---|---|---|---|
 | **1. Sources foundation** | Full `collect` ≥85% success, health all-green (no uncollected_sources / source_dead), every Pillar ≥10 items from ≥3 distinct sources | Don't build/iterate Triage logic | ✅ **DONE** (98.5%, all Pillars pass, 2 acceptable yellows) |
-| **2. Triage** | Each Pillar audited on ≥30 items, ≥90% reasonable judgments, score range ≥0.20, data-quality issues fixed in Collector not Triage prompt | Don't build/iterate Pulse | **🔴 partial** (P3 + P4 audited, P1/P2/P5 not yet) |
+| **2. Triage** | Each Pillar audited on ≥30 items, ≥90% reasonable judgments, score range ≥0.20, data-quality issues fixed in Collector not Triage prompt | Don't build/iterate Pulse | ✅ **DONE** (4293 triaged, range 0.00–0.90, all 5 Pillars ≥95% reasonable) |
 | **3. Pulse** | All 5 Pillars produce contract-compliant briefings on real backlog, content audit clean (provenance / URL / bilingual), cross-Pillar source diversity | Don't build Foundation | **🟡 1/5 Pillars** (Pillar 4 only) |
 | **4. Foundation** | Full B→G curriculum cycle, each deep-read wiki-stable, 3 weeks reproducible | Don't ship as v1.0 | ⏳ not started |
 | **5. Delivery + Meta-loop** | Real weekly run, email notification working, Livia reads + ≥1 prompt-refinement iteration based on real read feedback | v1.0 ship | ⏳ not started |
