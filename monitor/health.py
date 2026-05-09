@@ -45,8 +45,9 @@ def assemble_state(
     # never collected" (the failure mode caught in Session 7). Distinguish:
     # - declared (any active source not deferred / paywall / echo_only)
     # - declared_supported (subset whose primary kind the collector can fetch)
-    # The difference between these two sets is "active but routed to HITL by
-    # design" — those should NOT trigger the uncollected-sources alert.
+    # - deferred_with_reason (mvp_active=false items, parked with explanatory note)
+    # The difference between declared and declared_supported is "active but
+    # routed to HITL by design" — those should NOT trigger the uncollected alert.
     SUPPORTED_KINDS = frozenset({"rss", "scrape", "blog", "rss_partial"})
 
     def _primary_kinds(s: dict) -> list[str]:
@@ -64,21 +65,24 @@ def assemble_state(
                 yml = yaml.safe_load(f)
             declared = set()
             declared_supported = set()
+            deferred = []  # list of (id, note) tuples for surfacing
             for s in (yml.get("sources") or []):
                 if not isinstance(s, dict) or not s.get("id"):
                     continue
-                if s.get("human_required"):
-                    continue
+                sid = s["id"]
                 if s.get("mvp_active") is False:
+                    deferred.append((sid, s.get("notes", "")))
+                    continue
+                if s.get("human_required"):
                     continue
                 if s.get("mvp_mode", "full") != "full":
                     continue
-                sid = s["id"]
                 declared.add(sid)
                 if any(k in SUPPORTED_KINDS for k in _primary_kinds(s)):
                     declared_supported.add(sid)
             state["collector_declared_sources"] = declared
             state["collector_declared_supported_sources"] = declared_supported
+            state["collector_deferred_sources"] = deferred
         except Exception as e:  # noqa: BLE001
             log.warning("failed to read sources.yaml for declared-sources check: %s", e)
 
@@ -279,6 +283,17 @@ def render_markdown(state: dict[str, Any], triggers: list[Trigger]) -> str:
     lines.append(f"- last 7 days: ${state.get('cost_last_7d_usd', 0):.4f} (alarm at $5)")
     lines.append(f"- total to date: ${state.get('cost_total_usd', 0):.4f}")
     lines.append("")
+
+    # Deferred sources — informational, not alert. Surfaces parked work.
+    deferred = state.get("collector_deferred_sources", [])
+    if deferred:
+        lines.append(f"**Deferred sources ({len(deferred)})** — parked with explicit reason; see PROJECT_LOG.md Backlog B2:")
+        for sid, note in deferred[:10]:
+            note_short = (note or "").split('] ', 1)[-1][:70]
+            lines.append(f"- `{sid}` — {note_short}")
+        if len(deferred) > 10:
+            lines.append(f"- _(+{len(deferred) - 10} more — see sources.yaml for full list)_")
+        lines.append("")
 
     # triggered alerts
     if triggers:

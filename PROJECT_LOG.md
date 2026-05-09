@@ -6,7 +6,72 @@
 
 ## Backlog (deferred, with explicit revisit triggers)
 
-- [ ] **JS-rendered article extraction (e.g. OpenAI archive)** — `enrich_excerpts` couldn't recover ~110 OpenAI archive pages because they're Next.js/React pages where `trafilatura` sees only the empty SPA shell. **Decision: defer**, since (a) those are 2017–2024 archive items, never enter Pulse anyway (incremental cursor cuts pre-30-day items); (b) NEW OpenAI items via RSS now use `fetch_excerpt` fallback so future-incoming items work. **Revisit trigger**: when `collect` picks up a JS-rendered source and triage shows that source's high-signal items consistently NULL-excerpt for 2 consecutive weeks. **Fix at that point**: 30-line Wayback Machine fallback (`https://web.archive.org/web/0/<url>` — usually has rendered snapshot, no Chromium dep needed). Headless browser (Playwright + 200MB Chromium) is overkill and not worth the complexity.
+> Single canonical list of "things we know we should do later but parked for valid reasons". Per-source disposition stored in `sources.yaml` notes; this list groups them by category + revisit trigger.
+
+### B1. JS-rendered article extraction (Wayback fallback)
+
+- [ ] ~110 old OpenAI archive items + a few JS-rendered sources (apollo-research, agents-blog, weights-and-biases) can't be extracted because `trafilatura` sees only SPA shell.
+- **Defer rationale**: archive items are pre-30-day so cursor filter excludes them; new RSS-fed items work.
+- **Revisit trigger**: any JS-rendered source's high-signal items consistently NULL-excerpt for 2 consecutive weekly runs.
+- **Fix when triggered**: 30-line Wayback Machine fallback (`https://web.archive.org/web/0/<url>`). No Chromium dep.
+
+### B2. Source recovery — Asian corp / Taiwan banks (custom scrapers needed)
+
+The Phase 1.5 URL probing recovered 4 sources (Foxconn ⚠️ partial, ESun ❌ scrape-empty, Compal ❌ scrape-empty, Inventec ✅ working). Three more groups remain in `mvp_active: false`:
+
+**🔴 HIGH priority — direct sales-relevance to Livia's IBM clients:**
+- [ ] **TSMC** — WAF-level bot block, even Safari UA. Try Wayback fallback (B1). If still blocked, paid scraping API as last resort.
+- [ ] **ESun 玉山金控** — URL recovered but scrape returns 0 articles (page structure unusual). Per-source scraper needed.
+- [ ] **Compal 仁寶** — same pattern as ESun.
+- [ ] **CTBC 中信金控** — 404 on news paths, need URL exploration.
+- [ ] **Cathay Life 國泰人壽 (subsidiary)** — currently unverified; maybe works via parent cathay-financial.
+
+**🟡 MEDIUM — Taiwan manufacturing / financial coverage redundant via other sources:**
+- [ ] Wistron 緯創 — bot blocked
+- [ ] Quanta 廣達 — site PHP rendering broken
+- [ ] Pegatron 和碩 — scrape no articles
+- [ ] Sinopac 永豐, Taishin 台新, Taipei Fubon 台北富邦 — various 404 / bot issues
+- [ ] Mizuho 瑞穗銀行 (Japan), UOB (Singapore) — non-Taiwan Asian banks
+
+**🟢 LOW — international / US enterprise blogs:**
+- [ ] Bloomberg AI, Wells Fargo Tech, Goldman Sachs developer portal (paywall / auth required)
+- [ ] xAI, Bosch, ABB, Honeywell Forge, Mitsubishi Electric (dead domains / WAF)
+- [ ] Apollo Research, agents.blog, Weights & Biases (JS-rendered — covered by B1)
+- [ ] Various Chinese corporate sites (Ping An, ZhongAn) — Great Firewall + locale handling
+- [ ] Various Taiwan government / institute sites (III, ITRI, NSTC, MAS Veritas) — custom structure
+
+**Revisit trigger for HIGH-priority**: After Phase 4 ships and we have ≥4 weekly digests, any HIGH-priority source still missing → invest in custom scraper. Target: per-source scraper takes ~30 min dev each.
+
+### B3. Pillar 5 (community discourse) coverage thin
+
+- [ ] P5 has ~57 high-signal items vs P4's 759 — 13× imbalance.
+- **Cause**: under-collected — only Latent Space + a few individual newsletters. Missing: Lex Fridman (fixed in Phase 1), Cognitive Revolution, BG2 Pod, more academic blogs.
+- **Defer rationale**: 57 items still enough to write Pulse Pillar 5 weekly briefing.
+- **Revisit trigger**: if Pulse Pillar 5 output quality (Livia checkbox: ⚠️/❌ ratio > 30%) signals weakness for 2 consecutive weeks.
+- **Fix**: add 5-8 more P5 sources, run targeted collect.
+
+### B4. Triage prompt — old-paper Pillar 5 false positives
+
+- [ ] ~5 OpenAI 2018-2020 papers (GPT-3 paper, emergent tool use, etc.) tagged P5 by Haiku when really P3 historical.
+- **Defer rationale**: pre-30-day cursor filter excludes them from Pulse anyway.
+- **Revisit trigger**: if any of these surface in actual Pulse output (shouldn't, due to date filter).
+- **Fix**: add explicit guidance in TRIAGE_SYSTEM that historical papers belong to P3 (capability research) not P5 (current discourse).
+
+### B5. Collector — no Medium platform support
+
+- [ ] Towards Data Science / Netflix Tech Blog / The Sequence are added but `medium.com/@netflixtechblog`, `medium.com/airbnb-engineering` etc not yet in sources.yaml.
+- **Defer rationale**: 3 Medium-hosted sources already in (towards-data-science, the-sequence, netflix-techblog); marginal value of more.
+- **Revisit trigger**: when adding sources for Pillar 4 expansion or P5 thin coverage (B3).
+- **Fix**: add 5-8 Medium sources to yaml.
+
+### B6. Governance — pending controls
+
+(See `GOVERNANCE.md` "Pending governance work" for the full list. Highlights:)
+- [ ] **Cost circuit breaker** (3-layer) — Phase 5 prerequisite. Pre-run check, mid-run abort, post-run anomaly.
+- [ ] **Prompt versioning** — `triage_prompt_version` column on items.
+- [ ] **Manual override** — CLI to record human corrections of triage decisions.
+- [ ] **Kill switch** — `PIPELINE_DISABLED=1` env var honored by every CLI entry.
+- [ ] **Sampled re-triage** — quarterly random 30 items re-triaged with current prompt, compare to original decisions, flag drift.
 
 - [x] 2026-05-04 [delivery] Digest 交付管道選哪個？— resolved: GitHub repo markdown (主) + email 連結通知 (輔)
 - [x] 2026-05-04 [visual format] Mermaid vs SVG vs PNG 何時用哪個？— resolved: 規則表已寫入 CLAUDE.md

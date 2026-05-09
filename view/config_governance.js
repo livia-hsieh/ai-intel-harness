@@ -199,26 +199,36 @@ const govConfig = {
   // ====== 套餐推薦樹（即原決策樹一） ======
   decision_tree: {
     name: "套餐推薦樹",
-    description: "用客戶側寫從 IBM 訪談中外部觀察的訊號反推——不要問客戶自答，因為客戶常常自己也搞不清楚。",
+    description: "起點是進案路徑分組（多元入口）→ 客戶採購意圖 → 治理成熟度判斷。內規判斷只在一處：治理成熟度的 5 訊號之一。",
     flat_mermaid: `flowchart TD
-    A[客戶來] --> B{客戶嘴上明確說什麼?}
-    B -->|要工具| C{抽絲剝繭追問<br/>有專責角色 / SOP / 委員會嗎?}
-    C -->|都答得出來| D[GV-D 治理工具棧<br/>罕見]
-    C -->|答不出來| H{治理成熟度?}
-    B -->|要單案驗證| F{內規清楚可依循?}
-    F -->|清楚| G[GV-E 一次性技術檢測]
-    F -->|不清楚| H
-    B -->|整體 / 模糊| H
+    Start[客戶來] --> Path{進案路徑分組}
+    Path -->|A 組: IBM 內部賦能| AInt[IBM 內部用<br/>不對外賣]
+    Path -->|D 組: 三朵雲合作| DPart[嵌進雲商產品<br/>= GV-D 治理工具棧]
+    Path -->|B 組: 客戶端需求<br/>法規/危機/M&A/認證/<br/>IBM AI 案內含治理| Intent
+    Path -->|C 組: 技術前沿驅動<br/>multiagent/Claude Code| Intent
 
-    H -->|高: 已有完整內規<br/>+ RAI office<br/>+ AI 應用多| I[GV-A 補強升級包]
-    H -->|中: 零散內規<br/>+ 散落角色<br/>+ AI 應用中| J[GV-B 內規重構+落地包]
-    H -->|低: 沒內規<br/>+ 沒組織<br/>+ AI 應用少| K[GV-C 全套新建+落地包]
+    Intent{客戶採購意圖?}
+    Intent -->|要工具| ToolDrill{抽絲剝繭追問<br/>有專責角色/SOP/委員會嗎?}
+    ToolDrill -->|全部答得出| GVD[GV-D 治理工具棧<br/>罕見]
+    ToolDrill -->|答不出| Maturity
+    Intent -->|單案技術驗證| Single{內規清楚<br/>可依循?}
+    Single -->|清楚| GVE[GV-E 一次性技術檢測]
+    Single -->|不清楚| Upgrade[⚠️ 等同沒內規<br/>升級到 GV-B 或 GV-C]
+    Intent -->|整體治理 / 要藍圖 /<br/>要顧問 / 模糊| Maturity
 
-    style D fill:#fef3c7,stroke:#d97706
-    style I fill:#dbeafe,stroke:#1d4ed8
-    style J fill:#dbeafe,stroke:#1d4ed8
-    style K fill:#dbeafe,stroke:#1d4ed8
-    style G fill:#d1fae5,stroke:#059669`,
+    Maturity{治理成熟度判斷<br/>看 5 訊號:<br/>AI 應用面積 / 治理組織 /<br/>內規狀態 / 客戶詞彙 / 採購行為}
+    Maturity -->|多數訊號 高| GVA[GV-A 補強升級包]
+    Maturity -->|多數訊號 中| GVB[GV-B 內規重構+落地包]
+    Maturity -->|多數訊號 低| GVC[GV-C 全套新建+落地包]
+
+    style AInt fill:#e5e7eb,stroke:#6b7280
+    style DPart fill:#fef3c7,stroke:#d97706
+    style GVD fill:#fef3c7,stroke:#d97706
+    style GVE fill:#d1fae5,stroke:#059669
+    style GVA fill:#dbeafe,stroke:#1d4ed8
+    style GVB fill:#dbeafe,stroke:#1d4ed8
+    style GVC fill:#dbeafe,stroke:#1d4ed8
+    style Upgrade fill:#fee2e2,stroke:#dc2626`,
   },
 
   decision_signals: [
