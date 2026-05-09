@@ -87,7 +87,7 @@ jobs:
 
       - name: Run triage
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.AIINTELHARNESS }}
         run: |
           if [[ -z "$ANTHROPIC_API_KEY" ]]; then
             echo "❌ ANTHROPIC_API_KEY secret not set — aborting"
@@ -98,7 +98,7 @@ jobs:
 
       - name: Run pulse (5 Pillars)
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.AIINTELHARNESS }}
         run: |
           pulse --all > /tmp/pulse_all.md 2>&1
           echo "✅ pulse complete"
@@ -106,7 +106,7 @@ jobs:
 
       - name: Run foundation (curriculum-rotated)
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.AIINTELHARNESS }}
         run: |
           foundation --week ${{ steps.week.outputs.label }} --write 2>&1 | tail -10
           echo "✅ foundation complete"
