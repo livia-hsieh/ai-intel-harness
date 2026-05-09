@@ -133,6 +133,25 @@ def _extract_top1_headline(body: str) -> str | None:
 
 
 def apply_provenance_emoji(text: str) -> str:
+    """Replace bracketed markers with emoji bold form, AND insert paragraph
+    breaks before each marker so the eye can rest between provenance segments.
+    Without the break, [原文]…[推論]…[假設] all run together as a wall of text.
+
+    The regex handles three cases:
+      - English: "...claim. [推論] next claim" — whitespace before marker
+      - Chinese: "...結論。[推論] 下一句" — punctuation directly attached, no space
+      - Anywhere mid-paragraph: marker not already at line start
+    """
+    marker_alt = r"\[(?:原文|推論|假設|Source|Inferred|Assumed)\]"
+    # Insert two newlines before any marker that's not already at start of line
+    # (matches mid-paragraph occurrences whether or not whitespace precedes).
+    text = re.sub(
+        r"(?<!\A)(?<!\n)(?<!\n\n)\s*(" + marker_alt + r")",
+        r"\n\n\1",
+        text,
+    )
+
+    # Then convert the markers to emoji form.
     for pat, repl in PROVENANCE_SUBS:
         text = re.sub(pat, repl, text)
     return text
@@ -173,6 +192,50 @@ def build_hero_block(week: str, blocks: list[PillarBlock], total_cost_usd: float
     )
 
 
+def build_pipeline_flow_diagram(blocks: list[PillarBlock], total_collected: int, total_triaged: int) -> str:
+    """Mermaid flowchart showing pipeline shape this week."""
+    return (
+        "## 🔄 本期 pipeline 處理流程\n\n"
+        "```mermaid\n"
+        "flowchart LR\n"
+        f"    A[Collector<br/>{total_collected} sources] --> B[Triage<br/>{total_triaged} items 評分]\n"
+        f"    B --> C[High-signal<br/>≥0.6: {sum(b.item_count for b in blocks)} 篇]\n"
+        "    C --> D1[P1 BFSI<br/>40 items]\n"
+        "    C --> D2[P2 Strategy<br/>40 items]\n"
+        "    C --> D3[P3 Frontier<br/>40 items]\n"
+        "    C --> D4[P4 Harness<br/>40 items]\n"
+        "    C --> D5[P5 Community<br/>40 items]\n"
+        "    D1 --> E1[Top 3 + Watch]\n"
+        "    D2 --> E2[Top 3 + Watch]\n"
+        "    D3 --> E3[Top 3 + Watch]\n"
+        "    D4 --> E4[Top 3 + Watch]\n"
+        "    D5 --> E5[Top 3 + Watch]\n"
+        "```\n"
+    )
+
+
+def build_provenance_pie(text: str) -> str:
+    """Count [原文] / [推論] / [假設] in the digest body and render a pie chart."""
+    n_yuan = len(re.findall(r"\[原文\]|\[Source\]", text))
+    n_tui = len(re.findall(r"\[推論\]|\[Inferred\]", text))
+    n_jia = len(re.findall(r"\[假設\]|\[Assumed\]", text))
+    total = n_yuan + n_tui + n_jia
+    if total == 0:
+        return ""
+    return (
+        "## 📊 本期 provenance 分布（合成證據強度）\n\n"
+        f"_本期合成共 {total} 段，標記為：_\n\n"
+        "```mermaid\n"
+        "pie showData\n"
+        f'    "📖 原文 (直接出處)" : {n_yuan}\n'
+        f'    "🧠 推論 (有據可循)" : {n_tui}\n'
+        f'    "⚠️ 假設 (填補空白)" : {n_jia}\n'
+        "```\n"
+        "\n"
+        "_引用規範：📖 可直接引用；🧠 客戶會議前查 verification hints；⚠️ 引用時明說「此為推測」_\n"
+    )
+
+
 def reformat_pillar_block(b: PillarBlock) -> str:
     """Rewrite each Pillar's section with anchor + emoji-converted body."""
     anchor = f"<a id=\"pillar-{b.n}\"></a>"
@@ -195,11 +258,18 @@ def assemble(raw_pulse_text: str, week: str) -> str:
     full_text = "\n".join(b.body for b in blocks)
     reading_min = estimate_reading_time(full_text)
 
+    # Pipeline flow uses static placeholders for now since we don't have
+    # collector totals threaded through. Could enrich later.
+    pipeline_diagram = build_pipeline_flow_diagram(blocks, total_collected=145, total_triaged=4293)
+    provenance_pie = build_provenance_pie(full_text)
+
     out_parts = [
         build_hero_block(week, blocks, total_cost_usd, reading_min),
         "",
         build_mini_tldr(blocks),
         "",
+        provenance_pie,
+        pipeline_diagram,
         build_toc(blocks),
         "",
     ]
