@@ -61,6 +61,8 @@ def main(argv: list[str] | None = None) -> int:
         wiki_root=args.wiki_root,
         client=client,
         week_count=args.weeks,
+        min_tracks=args.min_tracks,
+        force=args.force,
     )
 
     if args.dry_run:
@@ -114,6 +116,10 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
                    help="Quarter label (e.g. Q1-2026); defaults to current quarter")
     p.add_argument("--weeks", type=int, default=12,
                    help="Number of weeks this quarter spans (default 12)")
+    p.add_argument("--min-tracks", type=int, default=5,
+                   help="Min Track essays needed for synthesis (default 5; 6=full B-G coverage)")
+    p.add_argument("--force", action="store_true",
+                   help="Skip min-tracks guard; synthesize whatever is available")
     p.add_argument("--write", action="store_true",
                    help="Write to wiki/perspectives/ (else stdout)")
     p.add_argument("--wiki-root", type=Path, default=DEFAULT_WIKI_PATH)

@@ -93,7 +93,17 @@ def run_quarterly_synthesis(
     wiki_root: Path,
     client: Client,
     week_count: int = 12,
+    min_tracks: int = 5,
+    force: bool = False,
 ) -> QuarterlyResult:
+    """Quarterly synthesis with min-track guard.
+
+    `min_tracks`: minimum number of Track essays needed for a meaningful
+        synthesis. Default 5 — synthesizing fewer would produce a thin
+        quarterly that doesn't justify the cost. Auto-trigger respects
+        this guard; manual `--force` overrides.
+    `force`: skip the min_tracks guard and synthesize whatever is available.
+    """
     if quarter_label is None:
         now = datetime.now()
         try:
@@ -124,6 +134,26 @@ def run_quarterly_synthesis(
                 f"# 本季 Harness Engineering 整合視角 — {quarter_label}\n\n"
                 f"_(無 Track 深讀可整合。請先連續跑滿 12 週 weekly digest 累積 "
                 f"Track B–G 各一篇，再回來執行 quarterly synthesis。)_\n"
+            ),
+            cents=0.0,
+        )
+
+    if len(track_essays) < min_tracks and not force:
+        # Below quality bar — synthesizing on too few tracks produces a thin
+        # quarterly that doesn't justify the cost. Skip auto-run; user can
+        # override with --force if they want a partial synthesis anyway.
+        return QuarterlyResult(
+            quarter_label=quarter_label,
+            track_essays_used=sorted(track_essays.keys()),
+            item_count=len(items),
+            week_count=week_count,
+            synthesis_markdown=(
+                f"# 本季 Harness Engineering 整合視角 — {quarter_label}\n\n"
+                f"_(only {len(track_essays)} of {min_tracks} required Track essays "
+                f"available — auto-synthesis skipped to avoid thin output. "
+                f"Use `synthesize-quarter --force` to synthesize anyway.)_\n\n"
+                f"Available tracks: {sorted(track_essays.keys())}\n"
+                f"Missing tracks: {sorted(set('BCDEFG') - set(track_essays.keys()))}\n"
             ),
             cents=0.0,
         )
