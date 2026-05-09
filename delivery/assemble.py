@@ -163,11 +163,13 @@ def estimate_reading_time(text: str) -> int:
     return max(1, round(word_chars / 600))  # ~600 chars/min mixed bilingual
 
 
-def build_toc(blocks: list[PillarBlock]) -> str:
+def build_toc(blocks: list[PillarBlock], has_foundation: bool = False) -> str:
     lines = ["## 📑 目錄"]
     for b in blocks:
         anchor = f"pillar-{b.n}"
         lines.append(f"- [Pillar {b.n} — {b.name}](#{anchor}) · {b.item_count} items · ${b.cost_usd:.4f}")
+    if has_foundation:
+        lines.append("- [📚 Foundation 深讀](#foundation) · curriculum 主題深度文")
     return "\n".join(lines)
 
 
@@ -249,7 +251,7 @@ def reformat_pillar_block(b: PillarBlock) -> str:
     return header + "\n" + body
 
 
-def assemble(raw_pulse_text: str, week: str) -> str:
+def assemble(raw_pulse_text: str, week: str, has_foundation: bool = False) -> str:
     blocks = parse_pulse_output(raw_pulse_text)
     if not blocks:
         return f"# AI Intel Digest — {week}\n\n_(empty: no Pillar content found in input)_\n"
@@ -270,7 +272,7 @@ def assemble(raw_pulse_text: str, week: str) -> str:
         "",
         provenance_pie,
         pipeline_diagram,
-        build_toc(blocks),
+        build_toc(blocks, has_foundation=has_foundation),
         "",
     ]
     for b in blocks:
@@ -294,6 +296,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="Output path (default: digests/<week>.md)")
     p.add_argument("--week", type=str, default=None,
                    help="Week label e.g. 2026-W19 (default: ISO week of today)")
+    p.add_argument("--foundation", type=Path, default=None,
+                   help="Path to foundation.md (e.g. digests/<week>/foundation.md); "
+                        "auto-detected if --week is set and the file exists")
     p.add_argument("--print", action="store_true",
                    help="Also echo the assembled digest to stdout")
     args = p.parse_args(argv)
@@ -304,7 +309,22 @@ def main(argv: list[str] | None = None) -> int:
         text = sys.stdin.read()
 
     week = args.week or datetime.now().strftime("%Y-W%V")
-    digest = assemble(text, week)
+
+    # Auto-detect Foundation file if not explicitly given.
+    foundation_path = args.foundation
+    if foundation_path is None:
+        repo_root = Path(__file__).resolve().parent.parent
+        candidate = repo_root / "digests" / week / "foundation.md"
+        if candidate.exists():
+            foundation_path = candidate
+    has_foundation = bool(foundation_path and foundation_path.exists())
+
+    digest = assemble(text, week, has_foundation=has_foundation)
+
+    if has_foundation:
+        foundation_text = foundation_path.read_text(encoding="utf-8")
+        digest += "\n\n---\n\n<a id=\"foundation\"></a>\n\n"
+        digest += foundation_text + "\n"
 
     if args.output is None:
         repo_root = Path(__file__).resolve().parent.parent
