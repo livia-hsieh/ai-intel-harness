@@ -107,7 +107,7 @@ def run_pulse(
         model=MODEL_PULSE,
         system=PULSE_SYSTEM,
         messages=[{"role": "user", "content": user_msg}],
-        max_tokens=4096,
+        max_tokens=6500,  # bilingual format ~2× output: 繁中 mirror + English mirror per Top 3
         purpose=f"pulse:pillar-{pillar_n}",
     )
 

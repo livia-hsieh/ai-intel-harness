@@ -130,7 +130,7 @@
    - `[假設]` 我填補的空白,可能錯
 4. **每篇 briefing 結尾附驗證提示**——「本篇含 N 段推論 + M 段假設,引用前建議查證以下三個關鍵點」
 5. **強制 URL 引用**——每段提到的事實、數字、引述都要 hyperlink。`[原文]` 段必有 URL,`[推論]`/`[假設]` 段附「推論基於 [URL1][URL2]」。Digest 末尾整理「本期所有引用 URL 清單」方便 spot-check。**缺 URL 的段落直接不收**
-6. **雙語輸出**——每篇 briefing 同時產出英文(主)+ 繁中專有名詞 inline 標註版本(衍生)。English-first synthesis,然後 cheap translation pass 產 bilingual。年度額外成本約 $50~$80(已含在 budget)。重複翻譯透過 `知識庫/_glossary.md` 快取避免
+6. **雙語輸出**——每篇 briefing 的 Top 3 採「**繁中主 + 英文全文鏡像**」格式：**繁中先講一次完整版本**（Livia 跟客戶溝通用），**英文再講一次完整版本**（給 Livia 練習英文，不是摘要）。Watch list 維持繁中為主、URL 保留原文。Verification hints 用英文（語言學習實用）。專有名詞如 `prompt caching` / `chain-of-thought monitoring` / `production deployment` 等在繁中段落內保留原文 inline，不強迫翻譯。年度額外成本約 $50~$80（已含在 budget）。**v0.4 修訂**：原本 v0.3 之前是「英文主 + 繁中 inline jargon」，v0.4 改為「繁中主 + 英文鏡像」以支援 Livia 的英文學習需求
 
 ---
 
