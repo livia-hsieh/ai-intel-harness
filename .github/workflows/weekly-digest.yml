@@ -16,11 +16,15 @@ concurrency:
 jobs:
   generate-digest:
     runs-on: ubuntu-latest
-    # 60 min wasn't enough — collect alone took 50 min on first manual run
-    # (145 sources × ~22s each for HTTP + trafilatura body extract). Bump to
-    # 120 min to leave room for triage + pulse + foundation. Future
-    # optimization: parallelize collect HTTP requests.
-    timeout-minutes: 120
+    # 180 min job cap with per-step timeouts. After 2 GA failures the lesson
+    # is: collect can take ~50 min, triage on first runs faces a backlog,
+    # and a single 60- or 120-min job timeout is too coarse. Solution:
+    # - per-step timeout-minutes (each step capped independently)
+    # - continue-on-error on collect (so if collect hangs, downstream still
+    #   runs against existing DB items rather than nothing happens this week)
+    # - triage CLI now defaults to --limit 300 so it can't run away even on
+    #   a fresh first-run backlog
+    timeout-minutes: 180
 
     steps:
       - name: Check kill switch
@@ -85,11 +89,14 @@ jobs:
           "
 
       - name: Run collect
+        timeout-minutes: 90
+        continue-on-error: true   # if collect hangs, downstream still uses existing DB items
         run: |
           collect 2>&1 | tail -50
           echo "✅ collect complete"
 
       - name: Run triage
+        timeout-minutes: 30
         env:
           ANTHROPIC_API_KEY: ${{ secrets.AIINTELHARNESS }}
         run: |
@@ -97,10 +104,14 @@ jobs:
             echo "❌ ANTHROPIC_API_KEY secret not set — aborting"
             exit 1
           fi
+          # Default --limit 300 — predictable bound. Backlog drains over
+          # multiple weekly runs; latest items prioritized via DESC ordering
+          # so this week's news always gets in this week's digest.
           triage 2>&1 | tail -30
           echo "✅ triage complete"
 
       - name: Run pulse (5 Pillars)
+        timeout-minutes: 20
         env:
           ANTHROPIC_API_KEY: ${{ secrets.AIINTELHARNESS }}
         run: |
@@ -109,6 +120,7 @@ jobs:
           tail -10 /tmp/pulse_all.md
 
       - name: Run foundation (curriculum-rotated)
+        timeout-minutes: 15
         env:
           ANTHROPIC_API_KEY: ${{ secrets.AIINTELHARNESS }}
         run: |
@@ -116,16 +128,19 @@ jobs:
           echo "✅ foundation complete"
 
       - name: Assemble digest
+        timeout-minutes: 5
         run: |
           assemble-digest -i /tmp/pulse_all.md --week ${{ steps.week.outputs.label }} 2>&1 | tail -3
           echo "✅ digest assembled"
 
       - name: Run health check
+        timeout-minutes: 3
         run: |
           health 2>&1 | tail -3
           echo "✅ health check complete"
 
       - name: Commit and push digest
+        timeout-minutes: 5
         run: |
           git config user.name "ai-intel-pipeline-bot"
           git config user.email "yixindear@gmail.com"

@@ -311,7 +311,10 @@ class Storage:
         if source_id:
             sql += " AND source_id = ?"
             params = (source_id,)
-        sql += " ORDER BY id ASC"
+        # Newest items first: this week's actual news gets triaged before any
+        # historical backlog. SQLite NULLS LAST = items with no published_at
+        # (scrape items missing date) go to end so they don't block fresh items.
+        sql += " ORDER BY published_at DESC NULLS LAST, id DESC"
         if limit:
             sql += f" LIMIT {int(limit)}"
         with self._conn() as conn:

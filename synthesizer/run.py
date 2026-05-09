@@ -77,7 +77,9 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     p.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
     p.add_argument("--sources", type=Path, default=DEFAULT_SOURCES_PATH)
     p.add_argument("--cost-log", type=Path, default=DEFAULT_COST_LOG)
-    p.add_argument("--limit", type=int, help="Triage at most this many items")
+    p.add_argument("--limit", type=int, default=300,
+                   help="Triage at most this many items per run (default 300; "
+                        "remainder processed next run, prevents runaway when backlog accumulates)")
     p.add_argument(
         "--source",
         type=str,
