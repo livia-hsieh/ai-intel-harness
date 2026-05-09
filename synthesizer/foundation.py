@@ -169,20 +169,35 @@ def write_foundation_to_files(
 
     wiki_path = None
     if wiki_root and wiki_root.exists():
-        slug = result.track_name.lower().replace(" ", "-").replace("/", "-")
-        # Strip non-ascii for wiki filename safety
-        ascii_slug = "".join(c if ord(c) < 128 and (c.isalnum() or c in "-_") else "" for c in slug)
-        if not ascii_slug:
-            ascii_slug = f"track-{result.track_id.lower()}"
-        wiki_dir = wiki_root / "concepts"
-        wiki_dir.mkdir(parents=True, exist_ok=True)
-        wiki_path = wiki_dir / f"{ascii_slug}.md"
+        # Per-track folder with week-stamped versions: v1, v2, v3 history
+        # preserved per SCOPE.md §2 (curriculum essays evolve over time, not
+        # overwritten). Folder layout:
+        #   wiki/concepts/track-e/
+        #     2026-W19.md   ← cycle 1 v1
+        #     2026-W31.md   ← cycle 2 v2
+        #     2026-W43.md   ← cycle 3 v3
+        #     latest.md     ← always points at the newest version
+        track_dir = wiki_root / "concepts" / f"track-{result.track_id.lower()}"
+        track_dir.mkdir(parents=True, exist_ok=True)
+
+        wiki_path = track_dir / f"{result.week_label}.md"
         wiki_header = (
-            f"# {result.track_name}\n\n"
-            f"_Foundation deep-read · first written {result.week_label} · "
-            f"_(this file is auto-sedimented from `digests/{result.week_label}/foundation.md` — "
-            f"manual edits should be reflected back to the digest source)_\n\n"
+            f"# {result.track_name} — {result.week_label}\n\n"
+            f"_Foundation deep-read · Track {result.track_id} · written {result.week_label}_  \n"
+            f"_(auto-sedimented from `digests/{result.week_label}/foundation.md`. "
+            f"Other versions: see same folder.)_\n\n"
         )
         wiki_path.write_text(wiki_header + result.essay_markdown + "\n", encoding="utf-8")
+
+        # latest.md always points at the newest week-stamped version.
+        latest_path = track_dir / "latest.md"
+        latest_path.write_text(
+            f"# {result.track_name} — Latest ({result.week_label})\n\n"
+            f"_This is a pointer to the most recent Foundation deep-read on this track._\n"
+            f"_Always refers to the latest week-stamped file in this folder._\n\n"
+            f"---\n\n"
+            + wiki_path.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
 
     return digest_path, wiki_path

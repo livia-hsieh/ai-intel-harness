@@ -25,23 +25,49 @@ echo ""
 echo "📥 Pulling latest from GitHub..."
 git pull --ff-only
 
-# 2. Sync Foundation track essays
-#    digests/<week>/foundation.md → wiki/concepts/track-<x>.md
+# 2. Sync Foundation track essays — per-week version preserved
+#    digests/<week>/foundation.md → wiki/concepts/track-<x>/<week>.md
+#    Plus a latest.md pointer that always reflects the newest version.
+#    SCOPE.md §2: curriculum essays evolve v1 → v2 → v3, never overwrite.
+#
+# Note: macOS default bash is 3.x (no associative arrays). We use plain
+# files in alphanumeric order — week labels like 2026-W19, 2026-W20 sort
+# correctly so the LAST-processed file per track IS the newest.
 echo ""
-echo "📚 Syncing Foundation deep-reads..."
-mkdir -p "$WIKI_ROOT/concepts"
+echo "📚 Syncing Foundation deep-reads (per-week versions)..."
 copied_foundations=0
+
+# Build a sorted list of (track, week, file) tuples, processed in order.
+# Last entry per track wins for the latest.md pointer.
+tmp_index=$(mktemp)
+trap "rm -f $tmp_index" EXIT
+
 for f in digests/*/foundation.md; do
   [ -e "$f" ] || continue
-  # Extract Track id from the file content (header has "Track <X>: ...")
   track=$(grep -oE 'Track [A-G]:' "$f" | head -1 | grep -oE '[A-G]')
-  if [[ -n "$track" ]]; then
+  week=$(echo "$f" | sed -E 's|digests/([^/]+)/foundation\.md|\1|')
+  if [[ -n "$track" && -n "$week" ]]; then
     track_lower=$(echo "$track" | tr A-Z a-z)
-    cp "$f" "$WIKI_ROOT/concepts/track-${track_lower}.md"
-    echo "   ✓ $f → wiki/concepts/track-${track_lower}.md"
+    track_dir="$WIKI_ROOT/concepts/track-${track_lower}"
+    mkdir -p "$track_dir"
+    cp "$f" "$track_dir/${week}.md"
+    echo "   ✓ $f → wiki/concepts/track-${track_lower}/${week}.md"
     copied_foundations=$((copied_foundations + 1))
+    # Append to index for latest-pointer pass
+    echo "$track_lower|$week|$f" >> "$tmp_index"
   fi
 done
+
+# Update latest.md per track from highest week label seen (sort -r picks newest)
+if [[ -s "$tmp_index" ]]; then
+  for track_lower in $(awk -F'|' '{print $1}' "$tmp_index" | sort -u); do
+    newest=$(awk -F'|' -v t="$track_lower" '$1==t {print $2}' "$tmp_index" | sort -r | head -1)
+    src="$WIKI_ROOT/concepts/track-${track_lower}/${newest}.md"
+    dst="$WIKI_ROOT/concepts/track-${track_lower}/latest.md"
+    cp "$src" "$dst"
+    echo "   📌 latest pointer → wiki/concepts/track-${track_lower}/latest.md (= ${newest})"
+  done
+fi
 
 # 3. Sync Quarterly synthesis
 #    digests/perspectives/*.md → wiki/perspectives/*.md
