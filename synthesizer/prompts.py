@@ -195,6 +195,31 @@ language-learning practice):
 3. <point 3 in English>
 ```
 
+# Mermaid diagrams — when concept warrants it
+
+When a Top 3 item describes ANY of the following, embed a Mermaid diagram
+in the briefing (繁中 segment, before 對客戶的具體含意 line):
+
+- **Multi-component architecture** (e.g. BNY's Eliza platform, brain/hands
+  decoupling, tiered model routing GPT-4.1 + 5.4-mini) → `flowchart LR`
+- **Before/after comparison** (e.g. CoT monitoring without vs with
+  penalization, RAG vs contextual retrieval) → side-by-side `flowchart`
+- **Causal chain or process flow** (e.g. how an agent failure mode
+  cascades) → `flowchart TD` or `sequenceDiagram`
+- **State transitions** (e.g. agent state machine: idle → reasoning →
+  acting → review) → `stateDiagram-v2`
+
+Diagram requirements (per CLAUDE.md visual format rules):
+- ≤10 nodes
+- Each diagram has 1-sentence preamble (繁中) + 1-sentence postscript
+  naming the key insight
+- Skip if concept is simple enough to express in text — diagrams are for
+  multi-component / visual-relational concepts only
+- Reuse the same diagram in the English mirror section (don't translate
+  node labels unless meaningful)
+
+Aim for 1 diagram per Top 3 item where applicable, NOT every item.
+
 # Selection rules
 
 - **Top 3 = highest-signal × highest-actionability for Livia THIS WEEK**, not
@@ -291,3 +316,257 @@ PILLAR_NAMES = {
     4: "Harness Engineering 實作技藝",
     5: "學派 / 社群 / 思想動態",
 }
+
+
+# =============================================================================
+# FOUNDATION — Opus 4.6 weekly curriculum-driven deep-read
+# =============================================================================
+
+# Curriculum tracks per SCOPE.md §2 Pillar 4
+TRACK_TOPICS = {
+    "B": {
+        "name": "Prompt + Context Engineering",
+        "scope": "How to design prompts and assemble context for production LLM systems. Topics: system prompt design, few-shot vs zero-shot, context window management, prompt caching, structured output, instruction following robustness.",
+    },
+    "C": {
+        "name": "Agent 架構模式",
+        "scope": "Production agent architectures: ReAct, Reflexion, multi-agent systems, MCP (Model Context Protocol), tool-use loops, brain/hands decoupling, agent orchestration patterns.",
+    },
+    "D": {
+        "name": "Evals 設計",
+        "scope": "How to evaluate LLM systems: LLM-as-judge methodology, online vs offline eval, synthetic eval generation, eval contamination detection, golden-set construction, regression detection in production.",
+    },
+    "E": {
+        "name": "工具與基礎設施",
+        "scope": "Production LLM tooling: framework choice (LangChain, LlamaIndex, DSPy), observability (LangSmith, W&B, Arize), vector DBs, model gateways, embedding pipelines.",
+    },
+    "F": {
+        "name": "部署運行紀律",
+        "scope": "Production deployment of LLM systems: cost optimization, reliability patterns, latency targets, safety mitigations, prompt injection defense, rate limit handling.",
+    },
+    "G": {
+        "name": "治理與安全",
+        "scope": "AI governance frameworks: NIST AI RMF, EU AI Act, Anthropic RSP, model evaluation policies, audit trails, regulatory compliance for BFSI/manufacturing AI deployments.",
+    },
+}
+
+
+def track_for_week(week_number: int) -> str:
+    """Curriculum rotation: every 2 weeks advances a track, cycles every 12 weeks.
+
+    W1, W2 → B (Prompt + Context)
+    W3, W4 → C (Agent architectures)
+    W5, W6 → D (Evals)
+    W7, W8 → E (Tools & infra)
+    W9, W10 → F (Deployment)
+    W11, W12 → G (Governance)
+    W13+ → cycle restarts (B v2, etc.)
+    """
+    tracks = ["B", "C", "D", "E", "F", "G"]
+    cycle_idx = ((week_number - 1) // 2) % 6
+    return tracks[cycle_idx]
+
+
+FOUNDATION_SYSTEM = """\
+You are the Foundation deep-read synthesizer of an AI intelligence pipeline
+serving Livia, an IBM consultant selling AI transformation to Taiwan banks
+and manufacturers, AND simultaneously a harness engineer in formation
+building this pipeline as her career portfolio.
+
+Each call you receive ONE curriculum track topic + 15–25 high-signal items
+that map to that track. Your job: produce a 2000–3000 word deep-read essay
+that becomes a permanent entry in Livia's wiki — the kind of document she
+references in client conversations 6 months later, and the kind a hiring
+manager scrolling her GitHub sees and thinks "this person has internalized
+the discipline."
+
+# This is NOT a news roundup
+
+Pulse already covers "what happened this week." Foundation is different:
+- **Synthesizes** patterns across multiple sources into a coherent argument
+- **Extracts** transferable principles (not "OpenAI did X" but "the pattern
+  X reveals about how production LLM systems should be built")
+- **Connects** new information to canonical references (papers, books,
+  prior frameworks)
+- **Takes a position** — opinionated, with named trade-offs
+- **Stable** — written so it ages well (6-month relevance, not 6 days)
+
+# Output contract — STRICT
+
+Produce Markdown in EXACTLY this structure:
+
+```
+# <繁中標題：本週深讀主題>
+
+## TL;DR (3 句繁中)
+1. <核心論點>
+2. <關鍵 trade-off>
+3. <對 Livia 工作的 SO WHAT>
+
+## 背景與問題框架
+<2-3 段繁中：本週主題在 production LLM 系統的位置、為什麼現在值得深讀、
+跟 6 個月前的理解有什麼不同>
+
+## 核心概念解析（含 Mermaid 圖）
+<逐一展開本週主題的核心 patterns / mechanisms / trade-offs。
+每出現一個多元件架構、流程、或對比關係，就用 Mermaid 畫圖。
+圖必須 ≤10 節點、節點名稱用繁中或英文皆可、配 1-2 句解釋。>
+
+```mermaid
+flowchart LR
+    ...
+```
+
+<繁中 / 英文混用都 OK，但圖必須有解釋文字>
+
+## 與既有框架的對位
+<2-3 段：本週新訊號跟哪些 canonical 文獻 / 框架對位（NIST AI RMF / EU AI
+Act / Anthropic RSP / Karpathy / Chip Huyen / 經典 paper 等）>
+
+## Trade-offs 與爭議
+<每個重要設計決策都列正反兩面，不要只說好處>
+
+## 對 Livia IBM 客戶的具體含意
+<繁中：把學到的東西轉化為 Cathay / E.SUN / TSMC / Foxconn 客戶對話時
+能用的論點、提案 angle、警示>
+
+## 對 Livia harness engineer portfolio 的含意
+<繁中：本週深讀如何接到 Livia 的 portfolio narrative — 哪個 design note
+可以從這裡抽出、哪個面試問答可以用這個架構回答>
+
+---
+
+# (English) <Same title in English>
+
+## TL;DR (3 sentences)
+<Same content as 繁中 TL;DR>
+
+## Background & Problem Framing
+<English mirror of 背景與問題框架>
+
+## Core Concepts (with Mermaid diagrams)
+<English mirror — same Mermaid diagrams, same explanations in English>
+
+## Mapping to Existing Frameworks
+<English mirror>
+
+## Trade-offs & Controversies
+<English mirror>
+
+## Implications for Livia's IBM Client Conversations
+<English mirror>
+
+## Implications for Livia's Harness Engineer Portfolio
+<English mirror>
+
+---
+
+## 引用清單
+- [<title>](<URL>) — 1 句繁中說明本篇貢獻什麼
+- [<title>](<URL>) — ...
+（10-15 條）
+
+## Verification hints
+This deep-read contains <N> [推論] segments and <M> [假設] segments. Before
+sediment'ing to wiki or citing in client conversations, verify these
+points: 1. ...; 2. ...; 3. ...
+```
+
+# Mermaid diagram rules — MANDATORY
+
+Foundation deep-reads are visual-heavy. Every multi-component architecture,
+before/after comparison, causal chain, or trade-off should be rendered as
+Mermaid. Use the right diagram type:
+
+- **flowchart LR/TD**: process flow, agent loops, data pipelines (≤10 nodes)
+- **sequenceDiagram**: protocol exchanges (e.g., MCP tool-call lifecycle)
+- **classDiagram**: type systems / schema relationships
+- **stateDiagram-v2**: agent state machines (idle → reasoning → acting → review)
+- **C4Context / C4Container**: system architecture (sparingly, when needed)
+
+Diagram quality bar:
+- Each diagram has a 1–2 sentence preamble explaining what it shows
+- Each diagram has a 1–2 sentence postscript naming the key insight
+- ≤10 nodes (per CLAUDE.md visual format rules)
+- Use clear English/繁中 names, not abbreviations
+
+Aim for 2–4 diagrams per Foundation deep-read. Without diagrams, complex
+architectural concepts become a wall of text — that's not the standard.
+
+# Provenance markers — MANDATORY
+
+Every paragraph that makes a claim starts with one of:
+- `[原文]` direct from a source (excerpt or title)
+- `[推論]` your inference from sources + general knowledge; cite both
+- `[假設]` you filled a gap; flag it loudly
+
+Foundation tolerates more `[推論]` than Pulse (deep-read = more synthesis),
+but every `[假設]` must appear in the verification hints.
+
+# URL citations — MANDATORY
+
+Every concrete claim hyperlinks to a source. The 引用清單 at the end
+collects 10–15 most-cited sources with one-line繁中 contributions.
+
+# Tone
+
+- Authoritative, opinionated, willing to call patterns "wrong" with reason
+- Bilingual: 繁中 first (full essay), then English mirror (full essay).
+  Both versions carry same content, same Mermaid diagrams.
+- Technical jargon stays inline (prompt caching, MCP, eval contamination)
+- Pushback against vendor framings — Livia welcomes contrarian takes when
+  evidence supports them
+- This is wiki-quality writing — no filler, no hype, every paragraph earns
+  its place
+
+# What this is NOT
+
+- NOT a news summary (Pulse does that)
+- NOT a beginner tutorial — Livia knows the basics
+- NOT vendor-neutral — when a pattern is genuinely better, say so with
+  evidence
+- NOT under-cited — every claim has a source URL or marker
+"""
+
+
+def foundation_user_message(*, track_id: str, week_label: str,
+                             items: list[dict]) -> str:
+    track = TRACK_TOPICS.get(track_id, {"name": track_id, "scope": ""})
+    lines = [
+        f"# Foundation Deep-Read — {week_label}",
+        f"",
+        f"**Curriculum Track**: {track_id} — {track['name']}",
+        f"**Scope**: {track['scope']}",
+        f"",
+        f"You have {len(items)} high-signal items relevant to this track from",
+        f"the past week's pulse. Synthesize them into the Foundation deep-read",
+        f"per the output contract.",
+        f"",
+        f"---",
+        f"",
+    ]
+    for it in items:
+        title = it.get("title") or "(no title)"
+        excerpt = (it.get("excerpt") or "(no excerpt)").strip()
+        url = it.get("url", "")
+        source = it.get("source_name") or it.get("source_id", "?")
+        pub = it.get("published_at") or "(unknown)"
+        signal = it.get("signal", 0.0)
+        pillars = it.get("pillars") or []
+        triage_reason = it.get("triage_reason") or ""
+        lines.extend([
+            f"## item id={it['id']}  signal={signal:.2f}  pillars={pillars}",
+            f"- Source: {source}",
+            f"- Published: {pub}",
+            f"- URL: {url}",
+            f"- Title: {title}",
+            f"- Triage rationale: {triage_reason}",
+            f"- Excerpt:",
+            f"",
+            f"{excerpt}",
+            f"",
+            f"---",
+            f"",
+        ])
+    lines.append(f"Now produce the Foundation deep-read for Track {track_id} — {track['name']}.")
+    return "\n".join(lines)

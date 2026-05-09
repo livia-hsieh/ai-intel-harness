@@ -28,6 +28,7 @@ collect = "collector.run:main"
 enrich-excerpts = "collector.enrich_excerpts:main"
 triage = "synthesizer.run:main"
 pulse = "synthesizer.run_pulse:main"
+foundation = "synthesizer.run_foundation:main"
 assemble-digest = "delivery.assemble:main"
 health = "monitor.run:main"
 
