@@ -112,7 +112,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     p.add_argument(
         "--max-items",
         type=int,
-        help="Hard cap on items per Pillar (defensive; defaults to no cap)",
+        default=40,
+        help="Hard cap on items per Pillar (default 40, keeps prompt under Sonnet 30K tok/min limit)",
     )
     p.add_argument(
         "--write",
