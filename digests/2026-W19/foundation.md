@@ -1,236 +1,263 @@
 # Foundation — Track E: 工具與基礎設施
 
-_Week 2026-W19 · 25 items synthesized · $0.7077 USD_
+_Week 2026-W19 · 25 items synthesized · $0.7157 USD_
 
 
 
-# Production LLM 工具鏈的典範轉移：從框架堆疊到可組合原語
+# 生產級 LLM 工具鏈的三重成熟：可觀測性即學習、時間感知 RAG、與供應鏈攻擊面
 
 ## TL;DR (3 句繁中)
-1. 前沿實驗室（尤其 Anthropic）過去 18 個月的工程實踐一致指向同一結論：最成功的 production agent 系統不靠重型框架，而是靠**可組合原語**（composable primitives）——工具定義、上下文工程、長期 session harness——的精確組裝。
-2. 關鍵 trade-off 在於**框架抽象帶來的開發速度** vs. **生產環境中的可觀測性與故障可歸因性**；當 infra noise 就能讓 SWE-bench 排名波動數個百分點時，你的 observability stack 比你的 framework 選擇重要得多。
-3. 對 Livia 而言，這意味著在台灣銀行/製造業客戶面前，提案的核心不應是「選 LangChain 還是 LlamaIndex」，而是**「你的 agent harness 設計模式、上下文管線、與 failure postmortem 文化成熟度如何？」**——這才是真正決定 production AI 成敗的基礎設施問題。
+1. 本週最重要的模式轉移：agent 可觀測性正從「除錯工具」進化為「持續學習迴路」——traces 只是原料，feedback 才是燃料；忽略這層的團隊將在 6 個月內面臨 agent 品質停滯。
+2. 關鍵 trade-off 出現在工具鏈每一層：RAG 要在相似度與時效性之間取捨、MCP 開放互通帶來供應鏈攻擊面、開放模型在 agent 任務達到成本甜蜜點但犧牲護欄成熟度。
+3. 對 Livia 的 SO WHAT：台灣金融與製造客戶正進入「agent 第二年」——不再問「能不能做」，而是問「怎麼不退化、怎麼不被攻擊、怎麼省成本」，這三個問題直接對應本週三大工具鏈模式。
 
 ## 背景與問題框架
 
-[推論] 六個月前，企業客戶問的問題還是「我該選 LangChain 還是 LlamaIndex？」、「要不要用 DSPy 做 prompt optimization？」。這些問題隱含了一個假設：**framework 是 production LLM 系統最重要的基礎設施決策**。但過去兩季累積的證據——從 Anthropic 連續發佈的 engineering blog、到 OpenAI 的 Assistants API / o3 工具整合範式、到 METR 的 eval 報告——正在瓦解這個假設。
+[推論] 2025 年是 LLM 工具鏈的「能力解鎖年」——LangChain / LlamaIndex 讓 prototype 變得容易，向量資料庫成為基礎設施，MCP 協議讓 tool-call 有了標準語法。但進入 2026 年中，生產環境暴露出三個 prototype 階段不會遇到的系統性問題：**品質衰退**（agent 跑久了沒有變好）、**時間盲區**（RAG 不知道文件過期）、**信任鏈斷裂**（MCP hijacking 讓 OAuth token 被偷走而開發者渾然不覺）。
 
-[原文] Anthropic「Building effective agents」一文開宗明義：「the most successful implementations weren't using complex frameworks or specialized libraries. Instead, they were building with simple, composable patterns.」([Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)) 這不是一句行銷語——它反映了跟數十個企業團隊合作後的結構性觀察。
+[推論] 六個月前的理解：工具鏈選型主要看「功能覆蓋度」（LangChain 的 chain 多不多、LlamaIndex 的 retriever 好不好）。現在的理解：工具鏈選型要看「學習閉環的完整度」——你的 observability 能不能接 feedback、你的 retriever 有沒有 temporal decay、你的 tool-call 協議有沒有 supply-chain 驗證。這不是功能問題，是架構哲學問題。
 
-[推論] 真正的基礎設施問題已經位移。**Framework 選擇降級為 tactical decision**，而三個更深層的問題浮上來：(1) 上下文工程（context engineering）如何在多 session、多 agent 的環境中保持資訊完整性；(2) 工具定義（tool authoring）的品質如何直接決定 agent 成功率；(3) infra-level noise（基礎設施雜訊）如何汙染你對模型能力的判斷，進而導致錯誤的架構決策。這三個問題構成了本週深讀的核心骨架。
+[原文] Harrison Chase 在 LangChain blog 明確指出：「The deeper role of agent observability is to power learning. But traces alone do not create that loop. You also need feedback.」([langchain.com](https://www.langchain.com/blog/agent-observability-needs-feedback-to-power-learning)) 這句話標誌著 LangChain 的定位從「chain 框架」轉向「agent 學習平台」——一個值得注意的策略轉向。
 
 ## 核心概念解析（含 Mermaid 圖）
 
-### 一、從 Framework-Centric 到 Primitive-Centric 的架構轉型
+### 模式一：可觀測性即學習（Observability-as-Learning）
 
-[原文] Anthropic 在多篇工程文章中反覆強調 composable patterns 優於 monolithic frameworks。在「Building effective agents」中，他們提出了一套由 workflow patterns（prompt chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer）構成的設計菜單，而非單一框架 ([Building effective agents](https://www.anthropic.com/engineering/building-effective-agents))。
+[原文] Chase 的論述核心：多數團隊把 agent observability 當除錯工具——出事了才打開 trace 看哪一步出錯。但真正的價值是把 trace + feedback 構成閉環，讓 agent 的 prompt / tool selection / routing 持續改善。([langchain.com](https://www.langchain.com/blog/agent-observability-needs-feedback-to-power-learning))
 
-[推論] 這與 LangChain / LlamaIndex 的設計哲學形成張力。LangChain 的 LCEL (LangChain Expression Language) 試圖用統一抽象包覆所有 LLM 互動模式；LlamaIndex 則以 data ingestion → index → query engine 的管線為核心抽象。兩者都有價值，但問題在於：**當你的 agent 需要跨越 code execution、file system、MCP server、和外部 API 時，框架的抽象層變成了 impedance mismatch 的來源**。
+[推論] 這個模式不只適用於 LangSmith。Arize Phoenix、W&B Weave、Braintrust 都在往同一方向收斂：從「log viewer」進化為「feedback-annotated trace store」。差異在於 feedback 的粒度與接入方式。
 
-以下圖展示 framework-centric 與 primitive-centric 架構的結構差異：
-
-```mermaid
-flowchart TD
-    subgraph FrameworkCentric["Framework-Centric 架構"]
-        A[應用邏輯] --> B[LangChain / LlamaIndex]
-        B --> C[LLM Provider]
-        B --> D[Vector DB]
-        B --> E[Tool Adapters]
-    end
-    subgraph PrimitiveCentric["Primitive-Centric 架構"]
-        F[應用邏輯] --> G[Context Assembler]
-        F --> H[Tool Registry / MCP]
-        F --> I[Session Harness]
-        G --> J[LLM Provider]
-        H --> J
-        I --> J
-    end
-```
-
-**關鍵洞察**：在 primitive-centric 架構中，沒有單一框架「擁有」LLM 呼叫；context assembler、tool registry、session harness 是三個獨立可替換的元件，各自可被觀測、各自可被 debug。這正是 Anthropic 工程團隊在 production 中收斂到的模式。
-
-### 二、上下文工程（Context Engineering）：從 Prompt Engineering 的升級
-
-[原文] Anthropic「Effective context engineering for AI agents」明確將 context engineering 定位為 prompt engineering 的演化：「Building with language models is becoming less about finding the right words and phrases for your prompts, and more about answering the broader question of 'what configuration of context is most likely to generate our model's desired behavior.'」([Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents))
-
-[推論] Context engineering 的核心問題不只是「塞什麼進 prompt」，而是一個**資訊架構設計問題**：在有限的 context window 內，如何為 agent 組裝出足以做出正確決策的「世界模型快照」。這包含：
-- **結構化記憶管理**：哪些資訊在 session 間 persist、哪些 evict
-- **Contextual retrieval**：Anthropic 的 Contextual Retrieval 方法——在 chunk embedding 前，先用 LLM 為每個 chunk 生成 situating context，解決傳統 RAG 中 chunk 脫離原文脈絡的問題 ([Contextual Retrieval](https://www.anthropic.com/engineering/contextual-retrieval))
-- **Tool result summarization**：當 agent 呼叫數十個工具後，如何壓縮 tool results 以保留 context budget
-
-[原文] Anthropic 的 Contextual Retrieval 方法具體做法是：對每個 chunk，在 embedding 前 prepend 一段由 LLM 根據完整文件生成的「chunk 的脈絡說明」，使得 retrieval 的 precision 大幅提升。結合 BM25 hybrid search 後，retrieval failure rate 降低了 67% ([Contextual Retrieval](https://www.anthropic.com/engineering/contextual-retrieval))。
-
-以下圖展示 context engineering 的分層架構：
+以下流程圖說明 observability-as-learning 的閉環架構：
 
 ```mermaid
 flowchart LR
-    A[Raw Data Sources] --> B[Contextual Chunking]
-    B --> C[Hybrid Retrieval<br/>BM25 + Vector]
-    C --> D[Context Assembler]
-    E[Session Memory] --> D
-    F[Tool Results<br/>Summarizer] --> D
-    D --> G[Final Context<br/>Window]
-    G --> H[LLM Inference]
+    A[Agent 執行] --> B[Trace 產生]
+    B --> C[Observability 平台]
+    C --> D{Feedback 信號}
+    D -->|人工標註| E[品質標籤]
+    D -->|自動 eval| F[自動評估分數]
+    D -->|使用者行為| G[接受/拒絕/編輯]
+    E --> H[Prompt / Tool 調優]
+    F --> H
+    G --> H
+    H --> A
 ```
 
-**關鍵洞察**：Context assembler 是 production agent 架構中最被低估的元件。它不是 framework 的一部分——它是你自己必須設計的系統，因為沒有通用框架能知道「此刻對這個 agent 來說，什麼資訊最重要」。
+**關鍵洞察**：沒有 D → H 這條回路的系統，trace 只是昂貴的 log；有了它，每次失敗都是訓練資料。
 
-### 三、長期運行 Agent 的 Session Harness 設計
+[推論] 這直接呼應 Eugene Yan 的「verification for autonomy, scale via delegation, closing the loop」框架（[eugeneyan.com](https://eugeneyan.com//writing/working-with-ai/)）。Yan 的論點：你願意把多少自主權交給 AI，取決於你有多強的 verification 機制。Observability-as-learning 正是 verification 的基礎設施化。
 
-[原文] Anthropic「Effective harnesses for long-running agents」指出核心挑戰：「they must work in discrete sessions, and each new session begins with no direct memory of previous sessions.」([Effective harnesses](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents))
+[原文] OpenAI 的 Codex 安全運營模式也呼應這個趨勢：sandboxing + approvals + agent-native telemetry 構成了一個「信任但驗證」的閉環（[openai.com](https://openai.com/index/running-codex-safely)）。Telemetry 不只是為了安全，更是為了理解 agent 在生產環境中的真實行為模式。
 
-[推論] 這是 production agent 最容易被忽視的 failure mode。一個跨多小時、多 context window 的 agent，本質上是一個**分散式系統**——每個 session 是一個 stateless worker，session 間的狀態傳遞就是分散式系統的 consensus 問題。Anthropic 的 harness 設計模式包括：
-- **Scratchpad files**：agent 在 file system 中維護結構化筆記，每個新 session 開始時讀取
-- **Task decomposition checkpoints**：agent 在完成子任務時寫入 checkpoint，下個 session 從 checkpoint 恢復
-- **Exit criteria**：明確定義 session 何時應該結束（避免 token 浪費在退化的 context 上）
+### 模式二：時間感知 RAG（Temporal-Aware RAG）
 
-```mermaid
-stateDiagram-v2
-    [*] --> SessionStart: 讀取 Scratchpad + Checkpoint
-    SessionStart --> Planning: 評估剩餘任務
-    Planning --> Executing: 選擇下一子任務
-    Executing --> Checkpointing: 子任務完成
-    Checkpointing --> Executing: 仍有剩餘任務
-    Checkpointing --> SessionEnd: Context 將滿 / 達成 exit criteria
-    SessionEnd --> [*]: 寫入 Scratchpad + Checkpoint
-```
+[原文] TDS 文章直指要害：「My system retrieved the most similar document, not the most current one. And in a knowledge base that changes constantly, that's a serious flaw.」解法是在 retriever 和 LLM 之間插入一個 temporal layer，根據文件時間戳和知識變動頻率做衰減過濾。([towardsdatascience.com](https://towardsdatascience.com/rag-is-blind-to-time-i-built-a-temporal-layer-to-fix-it-in-production/))
 
-**關鍵洞察**：Session harness 的設計品質直接決定 long-running agent 的可靠性。這不是模型能力問題——o3 和 Claude Opus 4.6 都夠聰明——而是**系統工程問題**。這正是 harness engineer 的核心價值所在。
+[推論] 這個問題在金融場景尤其致命。法規每季更新、利率每月變動、客戶 KYC 資料有時效性。一個不知道「這份文件是 2024 年的」的 RAG 系統，在銀行場景等於是一顆定時炸彈。
 
-### 四、工具設計即 Agent 能力設計
-
-[原文] Anthropic「Writing effective tools for agents」和「Advanced tool use on the Claude Developer Platform」兩篇文章共同建立了一套工具設計原則：tool description 的精確度、parameter schema 的語義清晰度、error message 的可操作性，都直接影響 agent 的成功率 ([Writing tools](https://www.anthropic.com/engineering/writing-tools-for-agents), [Advanced tool use](https://www.anthropic.com/engineering/advanced-tool-use))。
-
-[原文] MCP（Model Context Protocol）作為 tool integration 的標準化層，解決了 N×M 整合問題——N 個 agent 對 M 個工具的排列組合 ([Code execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp))。Agent Skills 進一步標準化了 agent 的能力描述格式，實現跨平台可攜性 ([Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills))。
-
-[推論] 工具設計正在成為一門獨立的工程學科。好的 tool definition 不只是寫一段 JSON schema——它是**為 LLM 設計 API contract**。與人類開發者的 API 設計不同，LLM 的「使用者體驗」取決於 description 的語義精確度、parameter 名稱的自解釋性、以及 error 回傳的 recovery 指引。
-
-### 五、基礎設施雜訊（Infrastructure Noise）與 Eval 可信度危機
-
-[原文] Anthropic「Quantifying infrastructure noise in agentic coding evals」揭示了一個令人不安的事實：SWE-bench 和 Terminal-Bench 等 agentic eval 的分數差異，有相當比例來自基礎設施層面的噪音——網路延遲、sandbox 環境差異、API rate limit——而非模型能力差異 ([Infrastructure noise](https://www.anthropic.com/engineering/infrastructure-noise))。
-
-[原文] Anthropic「Eval awareness in Claude Opus 4.6's BrowseComp performance」進一步展示了 eval contamination 風險：BrowseComp 的答案已經洩漏到公開網路上，模型在 eval 時的 web search 可能命中洩漏的答案，導致分數膨脹 ([Eval awareness](https://www.anthropic.com/engineering/eval-awareness-browsecomp))。
-
-[推論] 這兩個發現聯合起來構成了一個嚴肅的警告：**如果你用 leaderboard 分數來做 framework / model 選擇決策，你可能在基於噪音做判斷**。Production 環境需要自己的 eval suite，在自己的 infra 上跑，用自己的業務 metric 衡量。
+以下圖示說明傳統 RAG vs. 時間感知 RAG 的架構差異：
 
 ```mermaid
 flowchart TD
-    A[Benchmark Score<br/>例如 SWE-bench 72%] --> B{分數來源分解}
-    B --> C[真實模型能力<br/>~60-70%]
-    B --> D[Infra Noise<br/>~10-20%]
-    B --> E[Eval Contamination<br/>~5-15%]
-    D --> F[網路延遲 / Sandbox 差異<br/>/ Rate Limit]
-    E --> G[答案洩漏到網路<br/>/ 訓練資料汙染]
+    subgraph 傳統RAG
+        Q1[Query] --> R1[向量相似度檢索]
+        R1 --> L1[LLM 生成]
+    end
+    subgraph 時間感知RAG
+        Q2[Query] --> R2[向量相似度檢索]
+        R2 --> T[Temporal Layer<br/>時效過濾 + 衰減加權]
+        T --> V[Self-Healing 驗證層]
+        V --> L2[LLM 生成]
+    end
 ```
 
-**關鍵洞察**：Leaderboard 分數是 marketing input，不是 engineering input。Production model selection 需要你自己的 domain-specific eval，在你自己的 infra 上執行，並量化 infra noise 的影響。
+**關鍵洞察**：Temporal layer 和 self-healing layer 是互補的——前者防止「用到過期資料」，後者防止「用到正確資料但推理錯誤」。兩者都在 retriever 和 LLM 之間的「中間地帶」運作。
 
-### 六、Production Postmortem 文化：模型品質退化的偵測與歸因
+[原文] 另一篇 TDS 文章補充了 self-healing 層的概念：「Your RAG system isn't failing at retrieval — it's failing at reasoning.」([towardsdatascience.com](https://towardsdatascience.com/rag-hallucinates-i-built-a-self-healing-layer-that-fixes-it-in-real-time/)) 這層在 LLM 輸出之前做 claim-level verification，偵測到不一致時自動觸發 re-retrieval 或 fallback。
 
-[原文] Anthropic 在 2025 年 4 月和 9 月分別發佈了兩次 postmortem，揭示了 Claude Code 品質退化的根因：不是模型本身變笨了，而是 infra layer 的 bug（sampling parameter 錯誤、cache 腐敗、routing 錯誤）導致用戶感知到品質下降 ([April postmortem](https://www.anthropic.com/engineering/april-23-postmortem), [September postmortem](https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues))。
+[推論] 合併來看，production RAG 架構正從「query → retrieve → generate」三步走，演化為五步走：「query → retrieve → temporal filter → generate → self-heal verify」。每一步都是可觀測的、可被 feedback 標註的。這與模式一的 observability-as-learning 直接相接。
 
-[推論] 這些 postmortem 建立了一個重要的 pattern：**在 production LLM 系統中，模型品質退化的根因通常不在模型本身，而在圍繞模型的 infra 層**——prompt assembly bug、cache corruption、sampling parameter drift、routing misconfiguration。這意味著 observability stack 的設計不能只觀測模型 output quality，還需要觀測整個 context assembly pipeline 的每個環節。
+### 模式三：MCP 供應鏈攻擊面與工具信任鏈
+
+[原文] Mitiga 研究人員發現 Claude Code 的 MCP 實作存在設計漏洞：攻擊者可透過 MCP Hijacking 竊取 OAuth 憑證，且開發人員可能完全不知情，攻擊還能透過供應鏈擴散到下游（[ithome.com.tw](https://www.ithome.com.tw/news/175647)）。
+
+[推論] MCP（Model Context Protocol）的設計初衷是讓 tool-call 標準化、可組合，但這也意味著每一個 MCP server 都是一個潛在的攻擊注入點。當你的 agent 呼叫 10 個 MCP tool，每個 tool 背後可能是不同供應商維護的 server——這就是經典的 supply-chain attack surface，與 npm / PyPI 供應鏈攻擊的邏輯完全一致。
+
+以下序列圖說明 MCP Hijacking 的攻擊路徑：
+
+```mermaid
+sequenceDiagram
+    participant Dev as 開發者
+    participant CC as Claude Code
+    participant MCP as 惡意MCP Server
+    participant OAuth as OAuth Provider
+    
+    Dev->>CC: 安裝MCP工具
+    CC->>MCP: 建立連線 + 請求能力
+    MCP->>CC: 注入惡意工具描述
+    CC->>OAuth: 代開發者請求OAuth Token
+    OAuth-->>CC: 回傳Token
+    CC->>MCP: 傳遞Token（被竊取）
+    MCP-->>MCP: 利用Token存取下游資源
+```
+
+**關鍵洞察**：MCP 的信任模型預設是「開發者信任所有已安裝的 MCP server」——這在 prototype 環境合理，在生產環境致命。需要 tool-call 級別的 scope 限制與 runtime 驗證。
+
+[原文] OpenAI 的 GPT-5.5 Trusted Access for Cyber 計畫從反面說明了信任鏈的重要性：只有經過身份驗證的防禦者才能存取進階 cyber 能力（[openai.com](https://openai.com/index/gpt-5-5-with-trusted-access-for-cyber)）。這是一個「能力分級 + 存取控制」的模式，值得 MCP 生態系借鏡。
+
+[原文] TrendAI 與 Anthropic 的合作也強化了這個訊號：AI 驅動的漏洞偵測速度遠超修補速度，治理層必須跟上（[cio.com.tw](https://www.cio.com.tw/112198/)）。
+
+### 模式四（附加）：開放模型在 Agent 任務達到門檻
+
+[原文] LangChain 的 evals 顯示 GLM-5 和 MiniMax M2.7 等開放模型在「file operations、tool use、instruction following」這些核心 agent 任務上已達到閉源前沿模型的水平，成本和延遲卻大幅降低（[langchain.com](https://www.langchain.com/blog/open-models-have-crossed-a-threshold)）。
+
+[推論] 這改變了工具鏈的選型邏輯：model gateway（如 LiteLLM、Portkey、OpenRouter）從「方便切換」升級為「成本最佳化路由」的關鍵元件。當開放模型能跑 80% 的 agent 任務，你只需要把 20% 的高難度請求路由到 GPT-5.5 / Claude Mythos。
+
+以下圖示說明模型路由的成本最佳化模式：
+
+```mermaid
+flowchart LR
+    A[Agent Request] --> B{Complexity Router}
+    B -->|簡單工具呼叫| C[開放模型<br/>GLM-5 / MiniMax<br/>成本 0.1x]
+    B -->|複雜推理| D[前沿閉源模型<br/>GPT-5.5 / Mythos<br/>成本 1.0x]
+    C --> E[Response]
+    D --> E
+    E --> F[Observability + Feedback]
+    F -->|調整路由閾值| B
+```
+
+**關鍵洞察**：路由閾值本身是需要持續學習的——又回到模式一的 feedback 閉環。Observability 不是可選項，是讓整個工具鏈持續最佳化的引擎。
 
 ## 與既有框架的對位
 
-[推論] **Chip Huyen 的「Designing Machine Learning Systems」框架**：Chip Huyen 強調 ML 系統的核心挑戰在於 data distribution shift 與 feedback loop。本週深讀的核心發現——infra noise 汙染 eval、context assembly 決定 agent 成敗——完美映射到 Huyen 的框架：**distribution shift 不只發生在 training data 上，也發生在 runtime context 上**。每次 context assembler 的邏輯變更，都等於改變了模型的 input distribution。
+[推論] **Chip Huyen 的 ML 系統設計框架**：Huyen 在《Designing Machine Learning Systems》中強調 data distribution shift 是生產 ML 最大的敵人。本週的 temporal RAG 模式正是 distribution shift 在 retrieval 層的具體表現——知識庫的「分佈」隨時間漂移，而 embedding 空間不會自動反映這件事。temporal decay 函數本質上是一種 lightweight drift detection。
 
-[推論] **NIST AI RMF 的 GOVERN / MAP / MEASURE / MANAGE 四層架構**：台灣金融業客戶需要將 AI 風險管理對位到 NIST 框架。本週的 infra noise 與 eval contamination 發現直接映射到 MEASURE 層——如果你的 measurement（eval）本身不可靠，那麼 MANAGE（風險緩解）就建立在沙子上。Anthropic 的 postmortem 文化則映射到 GOVERN 層——你需要制度化的 incident response 流程來處理「模型好像變笨了」這類模糊的品質信號。
+[推論] **NIST AI RMF 的 GOVERN 和 MAP 功能**：MCP hijacking 攻擊直接對應 NIST AI RMF 中的「AI system supply chain risk」（MAP 3.4）。NIST 要求組織識別 AI 系統中的第三方元件及其信任邊界——MCP server 是一個尚未被主流風險管理框架充分覆蓋的第三方元件類別。台灣金管會若跟進 NIST 框架（已有跡象），MCP 供應鏈治理將成為合規要求。
 
-[原文] **Anthropic Responsible Scaling Policy (RSP)**：RSP 的更新引入了更細緻的 capability threshold 觸發升級 safeguard 的機制 ([RSP](https://www.anthropic.com/news/announcing-our-updated-responsible-scaling-policy))。[推論] 這與工具鏈的設計有隱性關聯：當模型能力跨越 threshold（例如 o3 獲得完整 tool access），你的 tool permission system 和 sandbox isolation 必須同步升級。MCP 的 permission model 是否足以應對 ASL-3 等級的模型？這是一個 open question。
+[原文] **Anthropic 的 responsible scaling / EU AI Act 的透明度要求**：FDA 的 Elsa 4.0 部署案例提供了一個參考模式——在 FedRAMP High 等級的 GCP 環境上，人員仍然參與每個工作流程階段（[ithome.com.tw](https://www.ithome.com.tw/news/175639)）。這是 human-in-the-loop 與 agent autonomy 之間的典型平衡點，直接映射到 EU AI Act 的高風險 AI 系統要求。
 
-[推論] **Karpathy 的 "Software 2.0" 框架**：Karpathy 原始論述聚焦於「neural network weights 取代手寫邏輯」。但本週的 evidence 顯示，Software 2.0 的 runtime 仍然深度依賴 Software 1.0 的 infra（file system、network、sandbox）。Session harness、MCP server、context assembler 全是 deterministic code。**Production AI 系統是 Software 1.0 和 2.0 的混合體，而非純粹的 2.0**。
+[推論] **Karpathy 的「Software 2.0」觀點**：本週的 observability-as-learning 模式是 Software 2.0 的必然推論。如果模型的行為由資料決定（而非程式碼），那麼你改善系統的方式就不是「寫更好的 code」，而是「餵更好的 feedback」。Chase 說的「traces alone do not create that loop」，本質上就是在說：你不能只 log，你必須 label。
 
 ## Trade-offs 與爭議
 
-**1. Framework vs. Composable Primitives**
-- 正方（Framework）：降低入門門檻、提供社群 recipes、加速 PoC → production 路徑。LangChain 的 LangSmith observability 整合是 primitives approach 缺乏的。
-- 反方（Primitives）：framework 的 abstraction leak 在 production 中是 debugging nightmare；版本升級 breaking change 頻繁（LangChain 0.1→0.2 的 migration 痛苦是業界共識）；框架綁定增加 vendor lock-in。
-- **本文立場**：[推論] 對台灣企業客戶的建議是 **PoC 用 framework、production 用 primitives**。但更精確地說：用 framework 做 rapid prototyping 以驗證 business value，然後在 production 化階段將核心路徑抽取為自有 primitives，保留 framework 作為非關鍵路徑的 utility。
+**1. Observability-as-Learning vs. 標註成本**
+- 正面：feedback 閉環讓 agent 持續改善，避免 prompt 品質停滯
+- 反面：高品質 feedback（尤其是人工標註）成本高昂。自動 eval 又容易 overfit 到 eval prompt 本身。[假設] 多數企業實務中，feedback 的標註率低於 5%，不足以驅動統計顯著的 prompt 調優
+- 爭議核心：feedback 的 ROI 高度依賴 agent 的使用頻率與錯誤成本。對低頻高風險場景（如合規審查），每一筆 feedback 都值得；對高頻低風險場景（如內部問答），可能不划算
 
-**2. MCP 標準化 vs. 自建 Tool Integration**
-- 正方（MCP）：標準化減少 N×M 整合成本；跨 provider 可攜性（理論上）。
-- 反方（自建）：MCP 的 permission model 尚未成熟；schema evolution story 不清楚；效能開銷（每次 tool call 多一層 protocol negotiation）。
-- **本文立場**：[推論] MCP 是正確的方向，但目前的 spec 還在快速演化中。建議客戶在 internal tool integration 上用 MCP，但在 security-critical 路徑上保留 bypass 能力。
+**2. Temporal RAG vs. 系統複雜度**
+- 正面：避免過期資訊誤導使用者，在法規/金融場景尤為關鍵
+- 反面：增加 retrieval pipeline 的延遲與維護複雜度。temporal decay 函數的超參數（衰減速率、文件類型權重）需要人工設定，本身也可能過時
+- 爭議核心：是否應該讓 LLM 自己判斷資訊時效性（chain-of-thought：「這份文件是 2024 年的，可能已過時」）vs. 在 retriever 層硬性過濾？前者更靈活但不可靠，後者可靠但可能過度過濾
 
-**3. Leaderboard-driven vs. Domain-eval-driven Model Selection**
-- 正方（Leaderboard）：快速篩選、社群共識、有比較基準。
-- 反方（Domain eval）：infra noise 和 contamination 讓 leaderboard 不可信；domain-specific eval 才能反映真實 business impact。
-- **本文立場**：[推論] Leaderboard 只能用於第一輪 shortlist（排除明顯不合格的模型）。最終 model selection 必須用 domain-specific eval，且必須量化 infra noise baseline。
+**3. 開放模型 vs. 閉源模型在 Agent 場景**
+- 正面：成本降低 10x、延遲降低、資料不離境（對台灣金融客戶是硬需求）
+- 反面：開放模型的 safety guardrail 成熟度仍低於 GPT-5.5 / Claude Mythos；在 adversarial input 場景（如客戶蓄意 jailbreak）的防護力未經充分測試
+- 爭議核心：LangChain 的 evals 測的是「能不能做對」，但生產環境還需要測「會不會做壞」。能力對齊不等於安全對齊
 
-**4. Multi-agent vs. Single-agent-with-tools**
-- [原文] Anthropic 的 C compiler 實驗用平行多 Claude instances 構建完整 compiler ([Building a C compiler](https://www.anthropic.com/engineering/building-c-compiler))；但同時他們的「Building effective agents」文章警告不要過早引入 multi-agent complexity。
-- **本文立場**：[推論] Multi-agent 是真實的 capability unlock，但只在任務可自然分解為 loosely-coupled subtasks 時才值得。對大多數企業用例（客服、文件處理、合規審查），single-agent-with-tools 仍是正確的起點。
+**4. MCP 開放性 vs. 安全性**
+- 正面：標準協議降低 tool 整合成本，促進生態系發展
+- 反面：如 Mitiga 揭露的，每一個 MCP server 都是未經審計的 trust boundary。「Install and trust」模式在企業環境不可接受
+- 爭議核心：MCP 社群是否需要一個類似 npm audit / Sigstore 的簽章與驗證機制？這會增加摩擦但可能是企業採用的前提
 
 ## 對 Livia IBM 客戶的具體含意
 
-**國泰/玉山等金融客戶**：
-- [推論] 不要讓客戶陷入「選 LangChain vs LlamaIndex」的框架戰爭。把對話拉到更高層次：**「你的 agent infra 有哪些可觀測的層？當模型行為看起來退化時，你的 debug 流程是什麼？」** Anthropic 的兩次 postmortem 是絕佳的 case study——品質退化的根因是 sampling parameter bug 和 cache corruption，不是模型變笨。
-- [推論] Contextual Retrieval 模式可直接應用於銀行的法規文件 RAG。銀行法規的 chunk 經常脫離原文脈絡（例如「依第三條第二項之規定」），Contextual Retrieval 的 situating context 生成能顯著改善 retrieval precision。**這是一個可量化的 PoC proposal**。
-- [推論] 金管會對 AI 的監管態度日趨嚴格，NIST AI RMF 是金融客戶的 compliance 語言。Infra noise 汙染 eval 的發現可以轉化為 risk management 論點：**「如果你的 model validation 建立在被 infra noise 汙染的 eval 上，你的 model risk management 就不合規。」**
+**國泰 / 玉山銀行場景**：
 
-**台積電/鴻海等製造業客戶**：
-- [推論] 製造業的 agent use case（設備維護知識庫查詢、SOP 自動化、良率分析報告生成）天然需要 long-running agent harness——一次分析可能跨越數十份技術文件和多個系統查詢。Anthropic 的 session harness 設計模式（scratchpad + checkpoint + exit criteria）可直接移植。
-- [推論] MCP 在工廠環境的價值在於標準化 legacy system integration：MES、ERP、SCADA 各有不同的 API 格式，MCP 作為中間層可以減少 agent 與每個系統的 point-to-point 整合。但必須提醒客戶：**MCP 的 security model 還不夠成熟，factory floor 的 OT 系統需要額外的 permission boundary**。
+[推論] 台灣的銀行已經在用 RAG 做法規查詢和客戶服務。本週的 temporal RAG 模式直接適用：金管會法規每季修訂、銀行內部 SOP 每月更新。建議在提案中加入「法規知識庫的時效性管理」作為獨立模組，不是可選項而是必要元件。具體提案角度：在現有 RAG pipeline 中插入 temporal filter，以法規發布日期為衰減起點，搭配 self-healing verification 層做 claim-level 一致性檢查。
+
+[推論] MCP hijacking 對銀行客戶的警示尤其重要。如果銀行內部的 coding agent（如基於 Codex 或 Claude Code 的開發輔助工具）使用 MCP 串接內部 API，一個被汙染的 MCP server 可以竊取 OAuth token 存取核心銀行系統。建議在資安治理提案中加入「agent tool-call 供應鏈稽核」項目。
+
+**台積電 / 鴻海製造場景**：
+
+[推論] 製造場景的 agent 通常跑在工廠內網、延遲敏感。開放模型達到 agent 任務門檻的訊號，對這類客戶特別有價值——可以在本地 GPU cluster 跑 GLM-5 等級的模型處理 80% 的 routine 任務（設備故障分類、SOP 查詢），只有複雜推理才上雲。Model gateway + complexity router 的架構可以作為具體提案元件。
+
+**跨產業通用**：
+
+[原文] Singular Bank 的案例（[openai.com](https://openai.com/index/singular-bank)）量化了 agent 的生產力提升：銀行員每天節省 60-90 分鐘在會議準備、投資組合分析、後續追蹤。這個數字可以直接用在台灣客戶的 ROI 計算中——但要注意：Singular 的 Singularity 是在 ChatGPT + Codex 上建的，不是開放模型。台灣客戶若有資料主權要求，需要做混合架構的成本估算。
+
+[原文] TridentCare 的 96% 排程自動化（[ithome.com.tw](https://www.ithome.com.tw/news/175643)）和 FDA Elsa 4.0 的多 agent 架構（[ithome.com.tw](https://www.ithome.com.tw/news/175639)）都是 agent 在高規管產業落地的實證。對台灣客戶的論點：「連 FDA 都在用 multi-agent + human-in-the-loop 架構了，金管會轄下的金融機構沒有理由不做，重點是做對。」
 
 ## 對 Livia harness engineer portfolio 的含意
 
-- **Design Note 提案**：從本週深讀可以抽取一篇 「Session Harness Design Patterns for Long-Running Enterprise Agents」 design note，結合 Anthropic 的 scratchpad/checkpoint 模式與台灣客戶場景（銀行合規審查 agent 需要跨越數十份法規文件），展示你不只是讀了 Anthropic 的 blog，而是在特定 domain 做了 adaptation。
-- **面試問答框架**：當被問「你怎麼選 LLM framework？」時，用本週的 primitives vs. framework 分析框架回答——「我不從 framework 開始選，我從三個 production primitives 開始設計：context assembly、tool registry、session harness。Framework 只是這三者的可選 implementation。」這個回答展示了 system-level thinking。
-- **Portfolio artifact**：Anthropic 的 infra noise 論文可以啟發一個 portfolio project——「Infrastructure Noise Quantification for Enterprise Agent Evals」——在自己的 eval pipeline 中量化 infra noise baseline，展示你理解 eval 的 meta-engineering。
-- **Multi-agent 實驗**：Carlini 的平行 Claude compiler 實驗提供了一個可複製的 portfolio project 模板。不需要做 compiler，但可以用同樣的 agent-team pattern 做一個「多 Claude 並行審查金融合規文件」的 demo。
+**Design Note 抽取機會**：
+
+1. **「Observability-as-Learning Loop in Agent Harness」** —— 從 Chase 的 feedback loop 概念出發，設計一個 harness 元件：trace collector + feedback annotator + prompt optimizer 的三件套。這可以作為 portfolio 中「我如何讓 agent 在生產環境持續改善」的 design note，直接展示系統思維。
+
+2. **「Temporal Decay Filter for Regulated-Domain RAG」** —— 實作一個 lightweight temporal layer，以台灣金管會法規為示範知識庫。這個元件小到可以在 GitHub 上一個 repo 展示，但足以說明「我理解生產 RAG 的真實失敗模式，不只是教科書上的 chunking 問題」。
+
+3. **「MCP Trust Boundary Auditor」** —— 一個 CLI tool 或 pre-commit hook，掃描專案中的 MCP server 配置、列出信任邊界、標記未簽章的 server。這在面試中可以回答「你如何處理 agent 供應鏈安全」這類問題。
+
+**面試問答框架**：
+
+- 「What's wrong with most RAG systems in production?」→ 答：時間盲區 + 推理幻覺，需要 temporal filter 和 self-healing verification 兩層防護，而且這兩層都要接入 observability 做 feedback 閉環。
+
+- 「How do you choose between open and closed models for agent tasks?」→ 答：不是二選一，是路由問題。用 complexity router 把 routine tasks 路由到開放模型（成本 0.1x），complex reasoning 路由到前沿閉源模型（成本 1.0x），路由閾值透過 feedback 持續調優。
+
+- 「What's the biggest risk in MCP-based agent architectures?」→ 答：supply-chain attack surface。每個 MCP server 是一個 trust boundary，需要 scope 限制、runtime token 驗證、定期稽核。這不是理論風險——Mitiga 已經在 Claude Code 上示範了 OAuth token 竊取。
 
 ---
 
-# The Paradigm Shift in Production LLM Tooling: From Framework Stacking to Composable Primitives
+# Production LLM Toolchain's Triple Maturation: Observability-as-Learning, Temporal RAG, and Supply-Chain Attack Surface
 
 ## TL;DR (3 sentences)
-1. Frontier lab engineering practices (especially Anthropic's) over the past 18 months converge on one conclusion: the most successful production agent systems rely not on heavyweight frameworks but on **composable primitives**—tool definitions, context engineering, and long-running session harnesses—precisely assembled.
-2. The key trade-off is **framework abstraction speed** vs. **production observability and fault attributability**; when infrastructure noise alone can swing SWE-bench rankings by several percentage points, your observability stack matters far more than your framework choice.
-3. For Livia, this means Taiwan banking/manufacturing client proposals should center not on "LangChain vs. LlamaIndex" but on **"how mature is your agent harness design, context pipeline, and failure postmortem culture?"**—the true infrastructure that determines production AI success.
+1. The most important pattern shift this week: agent observability is evolving from a "debugging tool" to a "continuous learning loop" — traces are the raw material, but feedback is the fuel; teams ignoring this layer will face agent quality stagnation within 6 months.
+2. Critical trade-offs surface at every layer of the toolchain: RAG must balance similarity vs. recency, MCP's openness creates supply-chain attack surfaces, and open models hit agent-task parity on cost but sacrifice guardrail maturity.
+3. So what for Livia: Taiwan banking and manufacturing clients are entering "agent year two" — they no longer ask "can we do it" but "how do we prevent degradation, how do we prevent attacks, how do we cut costs," and these three questions map directly to this week's three major toolchain patterns.
 
 ## Background & Problem Framing
 
-[推論] Six months ago, the enterprise question was still "should I choose LangChain or LlamaIndex?" or "should I use DSPy for prompt optimization?" These questions embed an assumption: **framework selection is the most important infrastructure decision for production LLM systems**. Evidence from the past two quarters—Anthropic's engineering blog series, OpenAI's Assistants API / o3 tool-access paradigm, METR's eval reports—is dismantling this assumption.
+[Inference] 2025 was the "capability unlock year" for LLM toolchains — LangChain and LlamaIndex made prototyping easy, vector databases became standard infrastructure, and MCP gave tool-calls a standard protocol. But mid-2026, production environments are exposing three systemic problems invisible during prototyping: **quality degradation** (agents don't improve over time), **temporal blindness** (RAG doesn't know documents expire), and **trust chain breakage** (MCP hijacking steals OAuth tokens while developers remain oblivious).
 
-[原文] Anthropic's "Building effective agents" opens with: "the most successful implementations weren't using complex frameworks or specialized libraries. Instead, they were building with simple, composable patterns." ([Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)) This is not marketing copy—it reflects structural observations from working with dozens of enterprise teams.
+[Inference] Six months ago, toolchain selection was primarily about "feature coverage" — how many chains does LangChain support, how good are LlamaIndex's retrievers. The current understanding: toolchain selection must evaluate "learning loop completeness" — can your observability platform accept feedback, does your retriever have temporal decay, does your tool-call protocol have supply-chain verification. This isn't a feature question; it's an architectural philosophy question.
 
-[推論] The real infrastructure questions have shifted. **Framework choice has been demoted to a tactical decision**, and three deeper questions have surfaced: (1) How does context engineering maintain information integrity across multi-session, multi-agent environments? (2) How does tool authoring quality directly determine agent success rates? (3) How does infrastructure-level noise corrupt your assessment of model capabilities, leading to incorrect architectural decisions? These three questions form the skeleton of this deep-read.
+[Source] Harrison Chase states explicitly in LangChain's blog: "The deeper role of agent observability is to power learning. But traces alone do not create that loop. You also need feedback." ([langchain.com](https://www.langchain.com/blog/agent-observability-needs-feedback-to-power-learning)) This sentence marks LangChain's strategic pivot from "chain framework" to "agent learning platform" — a shift worth tracking.
 
 ## Core Concepts (with Mermaid diagrams)
 
-### 1. From Framework-Centric to Primitive-Centric Architecture
+### Pattern One: Observability-as-Learning
 
-[原文] Across multiple engineering posts, Anthropic consistently advocates composable patterns over monolithic frameworks. "Building effective agents" presents a design menu of workflow patterns—prompt chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer—rather than a single framework ([Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)).
+[Source] Chase's core argument: most teams treat agent observability as a debugging tool — only opening traces after something breaks. The real value lies in forming a closed loop of trace + feedback that continuously improves agent prompt selection, tool routing, and reasoning quality. ([langchain.com](https://www.langchain.com/blog/agent-observability-needs-feedback-to-power-learning))
 
-[推論] This creates tension with LangChain/LlamaIndex's design philosophy. LangChain's LCEL attempts to wrap all LLM interaction patterns in a unified abstraction; LlamaIndex centers on a data ingestion → index → query engine pipeline. Both have value, but the problem emerges when **agents need to span code execution, file systems, MCP servers, and external APIs—the framework's abstraction layer becomes a source of impedance mismatch**.
+[Inference] This pattern isn't LangSmith-exclusive. Arize Phoenix, W&B Weave, and Braintrust are all converging toward the same direction: from "log viewer" to "feedback-annotated trace store." The differentiator is feedback granularity and integration interface.
 
-The following diagram contrasts framework-centric vs. primitive-centric architectures:
+The following flowchart shows the observability-as-learning closed loop:
+
+```mermaid
+flowchart LR
+    A[Agent Execution] --> B[Trace Generation]
+    B --> C[Observability Platform]
+    C --> D{Feedback Signals}
+    D -->|Human Annotation| E[Quality Labels]
+    D -->|Auto Eval| F[Automated Scores]
+    D -->|User Behavior| G[Accept/Reject/Edit]
+    E --> H[Prompt / Tool Tuning]
+    F --> H
+    G --> H
+    H --> A
+```
+
+**Key insight**: Without the D → H return path, traces are just expensive logs. With it, every failure becomes training data.
+
+[Inference] This directly echoes Eugene Yan's framework of "verification for autonomy, scale via delegation, closing the loop" ([eugeneyan.com](https://eugeneyan.com//writing/working-with-ai/)). Yan's argument: how much autonomy you delegate to AI depends on how strong your verification mechanism is. Observability-as-learning is the infrastructuralization of verification.
+
+[Source] OpenAI's Codex safety operations model reinforces this: sandboxing + approvals + agent-native telemetry form a "trust but verify" loop ([openai.com](https://openai.com/index/running-codex-safely)). Telemetry isn't just for security — it's for understanding agent behavior patterns in production.
+
+### Pattern Two: Temporal-Aware RAG
+
+[Source] The TDS article hits the core problem: "My system retrieved the most similar document, not the most current one. And in a knowledge base that changes constantly, that's a serious flaw." The fix inserts a temporal layer between retriever and LLM, filtering by document timestamps and knowledge change frequency with decay weighting. ([towardsdatascience.com](https://towardsdatascience.com/rag-is-blind-to-time-i-built-a-temporal-layer-to-fix-it-in-production/))
+
+[Inference] This problem is especially lethal in financial contexts. Regulations update quarterly, interest rates change monthly, customer KYC data has explicit time bounds. A RAG system that doesn't know "this document is from 2024" is a ticking time bomb in a banking context.
+
+The following diagram contrasts traditional RAG with temporal-aware RAG:
 
 ```mermaid
 flowchart TD
-    subgraph FrameworkCentric["Framework-Centric Architecture"]
-        A[Application Logic] --> B[LangChain / LlamaIndex]
-        B --> C[LLM Provider]
-        B --> D[Vector DB]
-        B --> E[Tool Adapters]
+    subgraph Traditional RAG
+        Q1[Query] --> R1[Vector Similarity Retrieval]
+        R1 --> L1[LLM Generation]
     end
-    subgraph PrimitiveCentric["Primitive-Centric Architecture"]
-        F[Application Logic] --> G[Context Assembler]
-        F --> H[Tool Registry / MCP]
-        F --> I[Session Harness]
-        G --> J[LLM Provider]
-        H --> J
-        I --> J
-    end
-```
-
-**Key insight**: In primitive-centric architecture, no single framework "owns" the LLM call. Context assembler, tool registry, and session harness are three independently replaceable components, each independently observable and debuggable.
-
-### 2. Context Engineering: The Evolution Beyond Prompt Engineering
-
-[原文] Anthropic's "Effective context engineering for AI agents" explicitly positions context engineering as the evolution of prompt engineering: "Building with language models is becoming less about finding the right words and phrases for your prompts, and more about answering the broader question of 'what configuration of context is most likely to generate our model's desired behavior.'" ([Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents))
-
-[推論] The core challenge isn't just "what to stuff into the prompt"—it's an **information architecture design problem**: how to assemble a "world-model snapshot" within limited context windows that enables correct agent decisions. This encompasses structured memory management, contextual retrieval, and tool result summarization.
-
-[原文] Anthropic's Contextual Retrieval prepends LLM-generated situating context to each chunk before embedding, yielding a 67% reduction in retrieval failure rate when combined with BM25
+    subgraph Temporal-Aware RAG
+        Q2[Query] --> R2[Vector Similarity Retrieval]
+        R2 --> T[Temporal Layer<br/>Recency Filter + Decay Weighting]
+        T --> V[Self-Healing
